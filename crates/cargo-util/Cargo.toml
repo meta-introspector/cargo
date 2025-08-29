@@ -1,35 +1,35 @@
 [package]
 name = "cargo-util"
 version = "0.2.24"
-rust-version = "1.89"  # MSRV:1
-edition.workspace = true
-license.workspace = true
-homepage.workspace = true
-repository.workspace = true
+rust-version = "1.89"
+edition = "2024"
+license = "MIT OR Apache-2.0"
+homepage = "https://github.com/rust-lang/cargo"
+repository = "https://github.com/rust-lang/cargo"
 description = "Miscellaneous support code used by Cargo."
 
 [dependencies]
-anyhow.workspace = true
-filetime.workspace = true
-hex.workspace = true
-ignore.workspace = true
-jobserver.workspace = true
-same-file.workspace = true
-sha2.workspace = true
-shell-escape.workspace = true
-tempfile.workspace = true
-tracing.workspace = true
-walkdir.workspace = true
+anyhow = "1.0.98"
+filetime = "0.2.25"
+hex = "0.4.3"
+ignore = "0.4.23"
+jobserver = "0.1.33"
+same-file = "1.0.6"
+sha2 = "0.10.9"
+shell-escape = "0.1.5"
+tempfile = "3.20.0"
+tracing = { version = "0.1.41", default-features = false, features = ["std"] }
+walkdir = "2.5.0"
 
 [target.'cfg(target_os = "macos")'.dependencies]
-core-foundation.workspace = true
+core-foundation = { version = "0.10.1", features = ["mac_os_10_7_support"] }
 
 [target.'cfg(unix)'.dependencies]
-libc.workspace = true
+libc = "0.2.174"
 
 [target.'cfg(windows)'.dependencies]
-miow.workspace = true
-windows-sys = { workspace = true, features = ["Win32_Storage_FileSystem", "Win32_Foundation", "Win32_System_Console"] }
+miow = "0.6.0"
+windows-sys = { version = "0.60", features = ["Win32_Storage_FileSystem", "Win32_Foundation", "Win32_System_Console"] }
 
 [lints]
 workspace = true
