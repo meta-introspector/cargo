@@ -107,7 +107,7 @@ thiserror = "2.0.12"
 time = { version = "0.3.41", features = ["parsing", "formatting", "serde"] }
 toml = { version = "0.9.5", default-features = false }
 toml_edit = { version = "0.23.3", features = ["serde"] }
-tracing = { path = "../tracing-vendor/tracing-0.1.41/tracing", default-features = false, features = ["attributes"] }
+tracing-core = { path = "../tracing-vendor/tracing/tracing-core", default-features = false }
 tracing-chrome = "0.7.2"
 tracing-subscriber = { version = "0.3.19", features = ["env-filter"] }
 unicase = "2.8.1"
