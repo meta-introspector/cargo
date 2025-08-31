@@ -11,6 +11,7 @@ use cargo_util::{ProcessBuilder, ProcessError};
 use std::ffi::OsString;
 use std::fmt::Write;
 use std::path::{Path, PathBuf};
+use crate::core::compiler::UserIntent;
 
 pub struct TestOptions {
     pub compile_opts: ops::CompileOptions,
@@ -64,20 +65,23 @@ impl UnitTestError {
 ///
 /// On error, the returned [`CliError`] will have the appropriate process exit
 /// code that Cargo should use.
-pub fn run_tests(ws: &Workspace<'_>, options: &TestOptions, test_args: &[&str]) -> CliResult {
-    let compilation = compile_tests(ws, options)?;
+use crate::ops::CompileOptions;
 
-    if options.no_run {
-        if !options.compile_opts.build_config.emit_json() {
-            display_no_run_information(ws, test_args, &compilation, "unittests")?;
-        }
-        return Ok(());
-    }
-    let mut errors = run_unit_tests(ws, options, test_args, &compilation, TestKind::Test)?;
+pub fn parse_test_args(
+    _gctx: &GlobalContext,
+    _args: &[&str],
+    _rust_root: &PathBuf,
+) -> CargoResult<TestOptions> {
+    // TODO: Implement parsing for TestOptions
+    // This will involve creating a clap Command for 'cargo test'
+    // and mapping its arguments to TestOptions fields.
 
-    let doctest_errors = run_doc_tests(ws, options, test_args, &compilation)?;
-    errors.extend(doctest_errors);
-    no_fail_fast_err(ws, &options.compile_opts, &errors)
+    // For now, return a basic TestOptions
+    Ok(TestOptions {
+        compile_opts: CompileOptions::new(_gctx, UserIntent::Test)?,
+        no_run: false,
+        no_fail_fast: false,
+    })
 }
 
 /// Compiles and runs benchmarks.

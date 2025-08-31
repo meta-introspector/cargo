@@ -18,7 +18,7 @@ pub use self::cargo_package::package;
 pub use self::cargo_pkgid::pkgid;
 pub use self::cargo_read_manifest::read_package;
 pub use self::cargo_run::run;
-pub use self::cargo_test::{TestOptions, run_benches, run_tests};
+pub use self::cargo_test::{TestOptions, run_benches};
 pub use self::cargo_uninstall::uninstall;
 pub use self::cargo_update::UpdateOptions;
 pub use self::cargo_update::generate_lockfile;
