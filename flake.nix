@@ -8,8 +8,8 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
     flake-utils.url = "github:meta-introspector/flake-utils?ref=feature/CRQ-016-nixify";
-    # Assuming cargo2nix is available as an input, or we can reference it from the main project
-    cargo2nix-root.url = "path:../.."; # Relative path to the main cargo2nix project
+    # cargo2nix-root will be provided as an explicit input
+    cargo2nix-root = { };
   };
 
   outputs = { self, nixpkgs, rust-overlay, flake-utils, cargo2nix-root }:
