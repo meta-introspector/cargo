@@ -26,6 +26,7 @@ Before you begin, ensure you have the following:
     ```
     This command will create a `Cargo.nix` file in your project's root directory.
 3.  **Important:** You must re-run this command every time you modify your `Cargo.toml` or `Cargo.lock` (e.g., when adding or updating dependencies).
+4.  **Critical Warning:** Do NOT manually delete the `vendor` directory. `cargo` manages its contents, and manual deletion can lead to data loss or unexpected behavior. Always let `cargo` handle the `vendor` directory.
 
 ### 4. Step 2: Create/Update `flake.nix`
 
