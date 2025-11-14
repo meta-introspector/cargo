@@ -372,7 +372,11 @@ This specification outlines a novel approach to data encoding and representation
     *   Exact match of properties.
     *   Closest match in terms of field size or rank.
     *   Curves with specific cryptographic properties (e.g., prime order, suitable for pairing-based cryptography).
-4.  **Curve Assignment:** Once an elliptic curve `E` is selected, it is assigned to the data type. This assignment is deterministic and reproducible.
+4.  **Optimal Curve Selection via Constraint Solver:** A constraint solver (e.g., MiniZinc) will be employed to optimally select elliptic curves. The solver will take into account:
+    *   The `EC_Fingerprint` derived from the DCM.
+    *   Available curves from LMFDB.
+    *   **Community Feedback for Beauty and Resonance:** Subjective criteria, gathered from a community of mathematicians and designers, will be integrated into the solver's objective function or as additional constraints. This feedback could be based on visual aesthetics of curve plots, perceived mathematical elegance, or other qualitative measures, aiming to select curves that are not only mathematically suitable but also "beautiful" or "resonant" within the community.
+5.  **Curve Assignment:** Once an elliptic curve `E` is selected, it is assigned to the data type. This assignment is deterministic and reproducible, given the same DCM and community feedback parameters.
 
 #### Encoding Primitive Data Types
 
