@@ -1,23 +1,39 @@
-.PHONY: all build nix-build nix-flake-build
+# Makefile.submodule
+# This Makefile is intended to be copied into submodules and invoked recursively.
 
-all: nix-build
+.PHONY: submodule-build-and-push clean
 
-build:
-	cargo build
+CARGO_GIT_MANAGE_BIN := $(CARGO2NIX_ROOT)/submodules/cargo/cargo-submodule-tool/target/debug/cargo-git-manage
 
-nix-build:
-	nix build  -vvv --trace-verbose  --show-trace --keep-build-log --keep-derivations  --keep-env-derivations --keep-failed --keep-going --keep-outputs 2>&1 | tee nixbuild.log
+CARGO_GIT_MANAGE_BIN_PATH := $(CARGO2NIX_ROOT)/submodules/cargo/target/debug/cargo-git-manage
+CARGO2NIX_BIN_PATH := $(CARGO2NIX_ROOT)/target/debug/cargo2nix
 
-nix-build-other:
-	nix develop --command cargo build
+submodule-build-and-push:
+	@echo "Building and pushing submodule $(notdir $(CURDIR)) (Depth: $(CURRENT_RECURSION_DEPTH))"
 
-nix-build-with-overrides:
-	nix develop --command cargo build --override-input overlay /data/data/com.termux.nix/files/home/pick-up-nix2/vendor/rust/cargo2nix/overlay --override-input cargo2nix-root $(CARGO2NIX_ROOT)
+	# Inject cargo2nix_path into Cargo.toml if not present
+	@if ! grep -q "\[package\.metadata\.cargo2nix\]" Cargo.toml; then \
+		echo "Adding [package.metadata.cargo2nix] to Cargo.toml"; \
+		echo "" >> Cargo.toml; \
+		echo "[package.metadata.cargo2nix]" >> Cargo.toml; \
+		echo "cargo2nix_path = \"$(CARGO2NIX_BIN_PATH)\"" >> Cargo.toml; \
+	elif ! grep -q "cargo2nix_path" Cargo.toml; then \
+		echo "Adding cargo2nix_path to [package.metadata.cargo2nix] in Cargo.toml"; \
+		sed -i "/\[package\.metadata\.cargo2nix\]/a cargo2nix_path = \"$(CARGO2NIX_BIN_PATH)\"" Cargo.toml; \
+	else \
+		echo "Updating cargo2nix_path in Cargo.toml"; \
+		sed -i "s|cargo2nix_path = \".*\"|cargo2nix_path = \"$(CARGO2NIX_BIN_PATH)\"|" Cargo.toml; \
+	fi
 
-nix-flake-build:
-	nix build --override-input cargo2nix-root $(CARGO2NIX_ROOT)
+	PATH=$(CARGO2NIX_ROOT)/submodules/cargo/target/debug:$$PATH \
+	$(CARGO_GIT_MANAGE_BIN_PATH)
+	nix build
+	git add .
+	git commit -m "feat: Update, vendor, cargo2nix, and build for $(notdir $(CURDIR))"
+	git push origin feature/CRQ-016-nixify
 
 clean:
+	@echo "Cleaning submodule $(notdir $(CURDIR))"
 	rm -f Cargo.nix
 	cargo clean
 	nix store gc --optimise

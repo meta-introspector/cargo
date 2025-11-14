@@ -5,6 +5,7 @@ members = [
   "credential/*",
   "benches/benchsuite",
   "benches/capture",
+  "cargo-submodule-tool",
 ]
 exclude = [
   "target/", # exclude bench testing
@@ -36,7 +37,7 @@ cargo-test-support = { version = "0.9.1", path = "crates/cargo-test-support" }
 cargo-util = { version = "0.2.26", path = "crates/cargo-util" }
 cargo-util-schemas = { version = "0.10.3", path = "crates/cargo-util-schemas" }
 cargo_metadata = "0.23.0"
-clap = "4.5.51"
+clap = "*"
 clap_complete = { version = "4.5.60", features = ["unstable-dynamic"] }
 color-print = "0.3.7"
 core-foundation = { version = "0.10.1", features = ["mac_os_10_7_support"] }
@@ -163,6 +164,8 @@ cargo-platform.workspace = true
 cargo-util-schemas.workspace = true
 cargo-util.workspace = true
 clap = { workspace = true, features = ["wrap_help"] }
+clap_derive = { version = "4.0.0-rc.1" }
+
 clap_complete.workspace = true
 color-print.workspace = true
 crates-io.workspace = true
@@ -283,3 +286,10 @@ http-transport-reqwest = ["gix/blocking-http-transport-reqwest"]
 
 [lints]
 workspace = true
+
+[package.metadata.cargo2nix]
+cargo2nix_path = "/data/data/com.termux.nix/files/home/pick-up-nix2/vendor/rust/cargo2nix/target/debug/cargo2nix"
+# Configuration options for cargo2nix will go here
+# For example:
+# package-set = "my-package-set"
+# output = "Cargo.nix"

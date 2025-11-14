@@ -1,0 +1,23 @@
+[package]
+name = "cargo-git-manage"
+version = "0.1.0"
+rust-version.workspace = true
+edition.workspace = true
+license.workspace = true
+homepage.workspace = true
+repository.workspace = true
+
+[package.metadata.cargo-git-manage]
+bootstrap_cargo_path = "/nix/store/z32kvhmvy0j5gj4shjvz3qi13a199jlm-rust-minimal-1.92.0-nightly-2025-10-16/bin/cargo"
+
+[dependencies]
+clap = { version = "4.5.51", features = ["derive"] }
+#clap_derive = "4.5.51"
+git2 = "0.20.2"
+serde = { version = "1.0", features = ["derive"] }
+toml = "0.9.8"
+toml_edit = "0.23.7"
+walkdir = "2.5.0"
+clap_derive = { version = "4.0.0-rc.1" }
+[lints]
+workspace = true
