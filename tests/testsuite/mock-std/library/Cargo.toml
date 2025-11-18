@@ -1,4 +1,4 @@
-[workspace]
+#[workspace]
 resolver = "1"
 members = [
   "std",

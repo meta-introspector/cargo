@@ -1,7 +1,7 @@
 use clap::{Arg, ArgAction, Command as ClapCommand};
 
 pub fn cli() -> ClapCommand {
-    ClapCommand::new("cargo-git-manage")
+    ClapCommand::new("cargo-repo-sync")
         .about("A cargo subcommand for managing Git repositories and Nix integration.")
         .subcommand_required(true)
         .arg_required_else_help(true)
@@ -172,5 +172,43 @@ pub fn cli() -> ClapCommand {
                             .action(ArgAction::SetTrue)
                             .help("Recursively process nested submodules")),
                 )
+                .subcommand(
+                    ClapCommand::new("fork-and-patch")
+                        .about("Forks vendor crates, updates remotes, checks out a branch, and patches Cargo.toml dependencies.")
+                        .arg(
+                            Arg::new("target-org")
+                                .long("target-org")
+                                .short('o')
+                                .value_name("ORG")
+                                .help("The GitHub organization to fork repositories to.")
+                                .default_value("meta-introspector"),
+                        )
+                        .arg(
+                            Arg::new("target-branch")
+                                .long("target-branch")
+                                .short('b')
+                                .value_name("BRANCH")
+                                .help("The branch to checkout and use for dependencies.")
+                                .default_value("feature/CRQ-016-nixify"),
+                        )
+                        .arg(
+                            Arg::new("dry-run")
+                                .long("dry-run")
+                                .action(ArgAction::SetTrue)
+                                .help("Perform a dry run without making actual changes."),
+                        ),
+                )
+        )
+        .subcommand(
+            ClapCommand::new("add-workspace-submodules")
+                .about("Adds all submodules as path dependencies to the root workspace.dependencies.")
+        )
+        .subcommand(
+            ClapCommand::new("comment-submodule-workspaces")
+                .about("Comments out [workspace] sections in submodule Cargo.toml files.")
+        )
+        .subcommand(
+            ClapCommand::new("generate-workspace-deps")
+                .about("Generates a comprehensive [workspace.dependencies] section for the root Cargo.toml.")
         )
 }

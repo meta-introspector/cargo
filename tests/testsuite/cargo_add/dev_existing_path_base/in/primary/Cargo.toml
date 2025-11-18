@@ -1,6 +1,6 @@
 cargo-features = ["path-bases"]
 
-[workspace]
+#[workspace]
 
 [package]
 name = "cargo-list-test-fixture"

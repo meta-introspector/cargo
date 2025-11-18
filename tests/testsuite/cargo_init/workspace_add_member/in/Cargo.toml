@@ -1,2 +1,2 @@
-[workspace]
+#[workspace]
 resolver = "2"

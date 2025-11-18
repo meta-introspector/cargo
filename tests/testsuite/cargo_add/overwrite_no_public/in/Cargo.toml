@@ -1,5 +1,5 @@
 cargo-features = ["public-dependency"]
-[workspace]
+#[workspace]
 
 [package]
 name = "cargo-list-test-fixture"

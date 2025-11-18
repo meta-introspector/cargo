@@ -1,4 +1,4 @@
-[workspace]
+#[workspace]
 resolver = "2"
 members = [
   "crates/*",
@@ -11,7 +11,7 @@ edition = "2018"
 homepage = "foo"
 keywords = ["foo", "bar"]
 readme = "README.md"
-rust-version = "1.67.0"
+# rust-version = "1.67.0"
 categories = ["algorithms"]
 documentation = "foo"
 exclude = ["foo"]

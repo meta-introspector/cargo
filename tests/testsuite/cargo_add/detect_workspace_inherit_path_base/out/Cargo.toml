@@ -1,6 +1,6 @@
 cargo-features = ["path-bases"]
 
-[workspace]
+#[workspace]
 members = ["primary", "deps/dependency"]
 
 [workspace.dependencies]

@@ -1,11 +1,13 @@
-use std::{env, fs::File, path::{Path, PathBuf}};
+use std::{env, fs, io::Write, path::{Path, PathBuf}, collections::HashMap};
+use std::fs::File;
+use toml_edit::DocumentMut;
 
 // Import modules from the library crate
-use cargo_git_manage::{
+use cargo_repo_sync::{
     cli,
-    submodule_manager::{self, commit_and_push_submodule, generate_submodule_patches},
-    plan_manager::{self, CargoUpdateCommand, CargoVendorCommand, Cargo2NixCommand, CargoCommand, Plan, Task, get_cargo_command, rename_cargo_config, restore_cargo_config},
-    git_operations::{self, GitRepositoryOperations}, // Assuming GitRepositoryOperations is needed in main for some reason, otherwise remove
+    submodule_manager::{commit_and_push_submodule, generate_submodule_patches},
+    plan_manager::{CargoUpdateCommand, CargoVendorCommand, Cargo2NixCommand, CargoCommand, Plan, Task, get_cargo_command, rename_cargo_config, restore_cargo_config, RemoveRustVersionCommand}, // Add RemoveRustVersionCommand here
+    workspace_generator::{WorkspaceGenerator, DefaultWorkspaceGenerator},
 };
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -84,6 +86,45 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     ) {
                         Ok(message) => println!("{}", message),
                         Err(e) => eprintln!("Error generating submodule patches: {}", e),
+                    }
+                },
+                Some(("fork-and-patch", fork_matches)) => {
+                    let target_org = fork_matches.get_one::<String>("target-org").expect("Target organization is required");
+                    let target_branch = fork_matches.get_one::<String>("target-branch").expect("Target branch is required");
+                    let dry_run_fork = *fork_matches.get_one::<bool>("dry-run").unwrap_or(&false);
+
+                    println!("Forking and patching submodules: Target Org={}, Target Branch={}, Dry Run={}", target_org, target_branch, dry_run_fork);
+
+                    let current_dir = env::current_dir().expect("Failed to get current directory");
+
+                    // Create logs directory if it doesn't exist
+                    let logs_dir = current_dir.join("logs");
+                    fs::create_dir_all(&logs_dir)
+                        .map_err(|e| format!("Failed to create logs directory: {}", e))?;
+
+                    let log_file_path = logs_dir.join("fork_and_patch.log");
+                    let mut log_file = File::create(&log_file_path)
+                        .map_err(|e| format!("Failed to create log file at {:?}: {}", log_file_path, e))?;
+
+                    writeln!(log_file, "--- Fork and Patch Log (Dry Run: {})", dry_run_fork)?;
+                    println!("Logging fork and patch output to {:?}", log_file_path);
+
+                    match cargo_repo_sync::submodule_manager::fork_and_patch_submodules(
+                        &current_dir,
+                        target_org,
+                        target_branch,
+                        &mut log_file,
+                        dry_run_fork,
+                    ) {
+                        Ok(_) => {
+                            writeln!(log_file, "Fork and patch process completed successfully.")?;
+                            println!("Fork and patch process completed successfully.");
+                        },
+                        Err(e) => {
+                            writeln!(log_file, "Error during fork and patch process: {}", e)?;
+                            eprintln!("Error during fork and patch process: {}", e);
+                            return Err(e.into());
+                        }
                     }
                 },
                 _ => unreachable!(),
@@ -356,6 +397,31 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
             }
         },
+        Some(("add-workspace-submodules", _)) => {
+            println!("Add workspace submodules subcommand invoked.");
+            let current_dir = env::current_dir().expect("Failed to get current directory");
+            match add_workspace_submodules(&current_dir, dry_run) {
+                Ok(_) => println!("Successfully added submodules to workspace dependencies."),
+                Err(e) => eprintln!("Error adding submodules to workspace dependencies: {}", e),
+            }
+        },
+        Some(("comment-submodule-workspaces", _)) => {
+            println!("Comment submodule workspaces subcommand invoked.");
+            let current_dir = env::current_dir().expect("Failed to get current directory");
+            match comment_submodule_workspaces(&current_dir, dry_run) {
+                Ok(_) => println!("Successfully commented out [workspace] sections in submodule Cargo.toml files."),
+                Err(e) => eprintln!("Error commenting out submodule workspaces: {}", e),
+            }
+        },
+        Some(("generate-workspace-deps", _)) => {
+            println!("Generate workspace dependencies subcommand invoked.");
+            let current_dir = env::current_dir().expect("Failed to get current directory");
+            let generator = DefaultWorkspaceGenerator;
+            match generator.generate_workspace_dependencies(&current_dir, dry_run) {
+                Ok(_) => println!("Successfully generated workspace dependencies."),
+                Err(e) => eprintln!("Error generating workspace dependencies: {}", e),
+            }
+        },
         _ => { // This block now handles the case where no subcommand is provided
             let current_dir = env::current_dir().expect("Failed to get current directory");
             println!("Running in directory: {:?}", current_dir);
@@ -499,5 +565,117 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             println!("Submodule tasks completed successfully!");
         }
     }
+    Ok(())
+}
+
+// New function to implement the logic for add-workspace-submodules
+fn add_workspace_submodules(root_dir: &Path, dry_run: bool) -> Result<(), Box<dyn std::error::Error>> {
+    println!("Adding all submodules as path dependencies to [workspace.dependencies]...");
+
+    let cargo_toml_path = root_dir.join("Cargo.toml");
+    let submodules_dir = root_dir.join("submodules");
+
+    let mut doc = fs::read_to_string(&cargo_toml_path)?
+        .parse::<toml_edit::DocumentMut>()?;
+
+    let workspace_deps = doc.get_mut("workspace")
+        .and_then(|item| item.as_table_mut())
+        .and_then(|table| table.get_mut("dependencies"))
+        .and_then(|item| item.as_table_mut())
+        .ok_or("Could not find [workspace.dependencies] in Cargo.toml")?;
+
+    let mut submodule_names: Vec<String> = fs::read_dir(&submodules_dir)?
+        .filter_map(|entry| {
+            let entry = entry.ok()?;
+            if entry.file_type().ok()?.is_dir() {
+                entry.file_name().into_string().ok()
+            } else {
+                None
+            }
+        })
+        .collect();
+
+    submodule_names.sort();
+
+    for submodule in submodule_names {
+        let dep_path = format!("./submodules/{}", submodule);
+        let item = toml_edit::Item::Table(toml_edit::Table::new());
+        let mut dep_table = item.into_table().unwrap();
+        dep_table.insert("path", toml_edit::value(dep_path));
+
+        match submodule.as_str() {
+            "serde" => {
+                workspace_deps.insert("serde", toml_edit::Item::Table(dep_table.clone()));
+                workspace_deps.insert("serde_derive", toml_edit::value(format!("{{ path = \"./submodules/serde/serde_derive\" }}")));
+                workspace_deps.insert("serde_core", toml_edit::value(format!("{{ path = \"./submodules/serde/serde_core\" }}")));
+            },
+            "time-rs" => {
+                workspace_deps.insert("time", toml_edit::Item::Table(dep_table.clone()));
+                workspace_deps.insert("time-core", toml_edit::value(format!("{{ path = \"./submodules/time-rs/time-core\" }}")));
+                workspace_deps.insert("time-macros", toml_edit::value(format!("{{ path = \"./submodules/time-rs/time-macros\" }}")));
+            },
+            "rand" => {
+                workspace_deps.insert("rand", toml_edit::Item::Table(dep_table.clone()));
+                workspace_deps.insert("rand08", toml_edit::value(format!("{{ path = \"./submodules/rand\" }}")));
+                workspace_deps.insert("rand09", toml_edit::value(format!("{{ path = \"./submodules/rand\" }}")));
+            },
+            _ => {
+                workspace_deps.insert(&submodule, toml_edit::Item::Table(dep_table));
+            }
+        }
+    }
+
+    if dry_run {
+        println!("--- DRY RUN: Generated Cargo.toml content ---");
+        println!("{}", doc.to_string());
+        println!("---------------------------------------------");
+    } else {
+        fs::write(&cargo_toml_path, doc.to_string())?;
+        println!("Successfully updated Cargo.toml with submodule workspace dependencies.");
+    }
+
+    Ok(())
+}
+
+// New function to implement the logic for comment-submodule-workspaces
+fn comment_submodule_workspaces(root_dir: &Path, dry_run: bool) -> Result<(), Box<dyn std::error::Error>> {
+    println!("Commenting out [workspace] sections in submodule Cargo.toml files...");
+
+    let submodules_dir = root_dir.join("submodules");
+
+    for entry in walkdir::WalkDir::new(&submodules_dir)
+        .into_iter()
+        .filter_map(|e| e.ok())
+        .filter(|e| e.file_type().is_file() && e.file_name() == "Cargo.toml")
+    {
+        let cargo_toml_path = entry.path();
+        println!("Processing Cargo.toml: {:?}", cargo_toml_path);
+        println!("  Dry run: {}", dry_run);
+
+        let mut doc = fs::read_to_string(&cargo_toml_path)?
+            .parse::<toml_edit::DocumentMut>()?;
+
+        if let Some(workspace_item) = doc.get_mut("workspace") {
+            if dry_run {
+                println!("--- DRY RUN: Would remove [workspace] section in {:?} ---", cargo_toml_path);
+            } else {
+                doc.remove("workspace");
+                println!("  Removed [workspace] section from {:?}", cargo_toml_path);
+            }
+        } else {
+            println!("  No [workspace] section found in {:?}", cargo_toml_path);
+        }
+
+        if dry_run {
+            println!("--- DRY RUN: Generated Cargo.toml content for {:?} ---", cargo_toml_path);
+            println!("{}", doc.to_string());
+            println!("---------------------------------------------");
+        } else {
+            fs::write(&cargo_toml_path, doc.to_string())?;
+            println!("Successfully updated Cargo.toml: {:?}", cargo_toml_path);
+        }
+    }
+
+    println!("Finished commenting out [workspace] sections.");
     Ok(())
 }

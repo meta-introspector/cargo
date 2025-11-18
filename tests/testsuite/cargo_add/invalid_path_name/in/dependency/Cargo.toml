@@ -1,4 +1,4 @@
-[workspace]
+#[workspace]
 
 [package]
 name = "cargo-list-test-fixture-dependency"

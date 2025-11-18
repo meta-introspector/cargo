@@ -44,6 +44,7 @@ pub fn get_cargo_command(command_str: &str) -> Option<Box<dyn CargoCommand>> {
         "cargo update" => Some(Box::new(CargoUpdateCommand)),
         "cargo vendor" => Some(Box::new(CargoVendorCommand)),
         "cargo2nix" => Some(Box::new(Cargo2NixCommand)),
+        "remove rust version constraints" => Some(Box::new(RemoveRustVersionCommand)), // Add this line
         _ => None, // Unknown command
     }
 }
@@ -51,7 +52,7 @@ pub fn get_cargo_command(command_str: &str) -> Option<Box<dyn CargoCommand>> {
 // Helper function to check if a file is git-ignored
 fn is_git_ignored(repo_path: &Path, file_path: &Path) -> Result<bool, String> {
     let repo = git2::Repository::open(repo_path)
-        .map_err(|e| format!("Failed to open Git repository at {:?}: {}", repo_path, e))?;
+        .map_err(|e| format!("Failed to open Git repository at {:?}: {}", repo_path, e)?);
 
     let relative_path = file_path.strip_prefix(repo_path)
         .map_err(|e| format!("Failed to get relative path for {:?} from {:?}: {}", file_path, repo_path, e))?;
@@ -108,10 +109,10 @@ impl CargoCommand for CargoUpdateCommand {
             let stderr_str = String::from_utf8_lossy(&output.stderr);
             writeln!(log_file, "[COMMAND_STATUS] cargo update failed.")
                 .map_err(|e| format!("Failed to write to log file: {}", e))?;
-            writeln!(log_file, "[ERROR] Stdout: {}\nStderr: {}", stdout_str, stderr_str)
+            writeln!(log_file, "[ERROR] Stdout: {{}}\nStderr: {{}}", stdout_str, stderr_str)
                 .map_err(|e| format!("Failed to write to log file: {}", e))?;
             Err(format!(
-                "'cargo update' failed:\nStdout: {}\nStderr: {}",
+                "'cargo update' failed:\nStdout: {{}}\nStderr: {{}}",
                 stdout_str,
                 stderr_str
             ))
@@ -171,10 +172,10 @@ impl CargoCommand for CargoVendorCommand {
             let stderr_str = String::from_utf8_lossy(&output.stderr);
             writeln!(log_file, "[COMMAND_STATUS] cargo vendor failed.")
                 .map_err(|e| format!("Failed to write to log file: {}", e))?;
-            writeln!(log_file, "[ERROR] Stdout: {}\nStderr: {}", stdout_str, stderr_str)
+            writeln!(log_file, "[ERROR] Stdout: {{}}\nStderr: {{}}", stdout_str, stderr_str)
                 .map_err(|e| format!("Failed to write to log file: {}", e))?;
             Err(format!(
-                "'cargo vendor' failed:\nStdout: {}\nStderr: {}",
+                "'cargo vendor' failed:\nStdout: {{}}\nStderr: {{}}",
                 stdout_str,
                 stderr_str
             ))
@@ -320,10 +321,10 @@ impl CargoCommand for Cargo2NixCommand {
             let stderr_str = String::from_utf8_lossy(&output.stderr);
             writeln!(log_file, "[COMMAND_STATUS] cargo2nix failed.")
                 .map_err(|e| format!("Failed to write to log file: {}", e))?;
-            writeln!(log_file, "[ERROR] Stdout: {}\nStderr: {}", stdout_str, stderr_str)
+            writeln!(log_file, "[ERROR] Stdout: {{}}\nStderr: {{}}", stdout_str, stderr_str)
                 .map_err(|e| format!("Failed to write to log file: {}", e))?;
             Err(format!(
-                "'cargo2nix' failed:\nStdout: {}\nStderr: {}",
+                "'cargo2nix' failed:\nStdout: {{}}\nStderr: {{}}",
                 stdout_str,
                 stderr_str
             ))
@@ -353,6 +354,87 @@ impl CargoCommand for Cargo2NixCommand {
             .map_err(|e| format!("Failed to write to log file: {}", e))?;
         println!("[DRY_RUN_COMMAND] Would execute command: '{}' in directory: {:?}", command_str, current_dir);
         writeln!(log_file, "[DRY_RUN_STATUS] cargo2nix dry run completed.")
+            .map_err(|e| format!("Failed to write to log file: {}", e))?;
+        Ok(())
+    }
+}
+
+// Struct for the 'remove rust version' command
+pub struct RemoveRustVersionCommand;
+
+impl CargoCommand for RemoveRustVersionCommand {
+    fn needs_execution(&self, current_dir: &Path) -> Result<bool, String> {
+        // This command should always run if there are any uncommented rust-version lines
+        // We can check this by grepping for uncommented lines.
+        let output = Command::new("grep")
+            .arg("-r")
+            .arg("-e")
+            .arg("^rust-version = \"[0-9.]\+\"$")
+            .arg("--include")
+            .arg("Cargo.toml")
+            .arg(current_dir)
+            .output()
+            .map_err(|e| format!("Failed to execute grep: {}", e))?;
+
+        Ok(!output.stdout.is_empty())
+    }
+
+    fn execute(&self, current_dir: &Path, log_file: &mut File) -> Result<Output, String> {
+        writeln!(log_file, "[COMMAND_START] Removing rust-version constraints in {:?}", current_dir)
+            .map_err(|e| format!("Failed to write to log file: {}", e))?;
+
+        // Find all Cargo.toml files
+        let mut cargo_tomls_to_process = Vec::new();
+        for entry in walkdir::WalkDir::new(current_dir)
+            .into_iter()
+            .filter_map(|e| e.ok())
+            .filter(|e| e.file_type().is_file() && e.file_name() == "Cargo.toml")
+        {
+            cargo_tomls_to_process.push(entry.path().to_path_buf());
+        }
+
+        let mut changed_files = 0;
+        for cargo_toml_path in cargo_tomls_to_process {
+            let content = fs::read_to_string(&cargo_toml_path)
+                .map_err(|e| format!("Failed to read Cargo.toml at {:?}: {}", cargo_toml_path, e))?;
+            
+            let new_content = content.lines()
+                .map(|line| {
+                    if line.trim_start().starts_with("rust-version = ") && !line.trim_start().starts_with("#") {
+                        format!("# {}", line)
+                    } else {
+                        line.to_string()
+                    }
+                })
+                .collect::<Vec<String>>()
+                .join("\n");
+
+            if new_content != content {
+                fs::write(&cargo_toml_path, new_content)
+                    .map_err(|e| format!("Failed to write to Cargo.toml at {:?}: {}", cargo_toml_path, e))?;
+                writeln!(log_file, "  Commented out rust-version in {:?}", cargo_toml_path)
+                    .map_err(|e| format!("Failed to write to log file: {}", e))?;
+                changed_files += 1;
+            }
+        }
+
+        if changed_files > 0 {
+            writeln!(log_file, "[COMMAND_STATUS] Removed rust-version constraints in {} files.", changed_files)
+                .map_err(|e| format!("Failed to write to log file: {}", e))?;
+            Ok(Output { status: std::process::ExitStatus::from_raw(0), stdout: Vec::new(), stderr: Vec::new() })
+        } else {
+            writeln!(log_file, "[COMMAND_STATUS] No rust-version constraints found to remove.")
+                .map_err(|e| format!("Failed to write to log file: {}", e))?;
+            Ok(Output { status: std::process::ExitStatus::from_raw(0), stdout: Vec::new(), stderr: Vec::new() })
+        }
+    }
+
+    fn dry_run(&self, current_dir: &Path, log_file: &mut File) -> Result<(), String> {
+        let command_str = format!("Remove rust-version constraints");
+        writeln!(log_file, "[DRY_RUN_COMMAND] Would execute command: '{}' in directory: {:?}", command_str, current_dir)
+            .map_err(|e| format!("Failed to write to log file: {}", e))?;
+        println!("[DRY_RUN_COMMAND] Would execute command: '{}' in directory: {:?}", command_str, current_dir);
+        writeln!(log_file, "[DRY_RUN_STATUS] Remove rust-version constraints dry run completed.")
             .map_err(|e| format!("Failed to write to log file: {}", e))?;
         Ok(())
     }

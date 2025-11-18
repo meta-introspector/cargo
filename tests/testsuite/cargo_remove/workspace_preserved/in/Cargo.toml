@@ -1,4 +1,4 @@
-[workspace]
+#[workspace]
 members = [ "my-package", "my-other-package" ]
 
 [workspace.dependencies]

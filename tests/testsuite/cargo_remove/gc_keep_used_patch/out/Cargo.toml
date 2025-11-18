@@ -1,6 +1,6 @@
 # Cargo.toml
 
-[workspace]
+#[workspace]
 members = ["serde", "serde_derive"]
 
 [patch.crates-io]

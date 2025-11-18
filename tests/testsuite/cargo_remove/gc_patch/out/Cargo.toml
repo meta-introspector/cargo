@@ -1,4 +1,4 @@
-[workspace]
+#[workspace]
 members = [ "my-member" ]
 
 [package]
