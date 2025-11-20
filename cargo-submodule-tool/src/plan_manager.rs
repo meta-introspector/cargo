@@ -4,6 +4,7 @@ use std::{
     io::Write,
     path::Path,
     process::{Command, Output},
+    os::unix::process::ExitStatusExt,
 };
 
 use serde::{Deserialize, Serialize};
@@ -52,7 +53,7 @@ pub fn get_cargo_command(command_str: &str) -> Option<Box<dyn CargoCommand>> {
 // Helper function to check if a file is git-ignored
 fn is_git_ignored(repo_path: &Path, file_path: &Path) -> Result<bool, String> {
     let repo = git2::Repository::open(repo_path)
-        .map_err(|e| format!("Failed to open Git repository at {:?}: {}", repo_path, e)?);
+        .map_err(|e| format!("Failed to open Git repository at {:?}: {}", repo_path, e))?;
 
     let relative_path = file_path.strip_prefix(repo_path)
         .map_err(|e| format!("Failed to get relative path for {:?} from {:?}: {}", file_path, repo_path, e))?;
@@ -107,12 +108,10 @@ impl CargoCommand for CargoUpdateCommand {
         } else {
             let stdout_str = String::from_utf8_lossy(&output.stdout);
             let stderr_str = String::from_utf8_lossy(&output.stderr);
-            writeln!(log_file, "[COMMAND_STATUS] cargo update failed.")
-                .map_err(|e| format!("Failed to write to log file: {}", e))?;
-            writeln!(log_file, "[ERROR] Stdout: {{}}\nStderr: {{}}", stdout_str, stderr_str)
+            writeln!(log_file, "[ERROR] Stdout: {}\nStderr: {}", stdout_str, stderr_str)
                 .map_err(|e| format!("Failed to write to log file: {}", e))?;
             Err(format!(
-                "'cargo update' failed:\nStdout: {{}}\nStderr: {{}}",
+                "'cargo update' failed:\nStdout: {{}}\nStderr: {{}}{}{}",
                 stdout_str,
                 stderr_str
             ))
@@ -172,10 +171,10 @@ impl CargoCommand for CargoVendorCommand {
             let stderr_str = String::from_utf8_lossy(&output.stderr);
             writeln!(log_file, "[COMMAND_STATUS] cargo vendor failed.")
                 .map_err(|e| format!("Failed to write to log file: {}", e))?;
-            writeln!(log_file, "[ERROR] Stdout: {{}}\nStderr: {{}}", stdout_str, stderr_str)
+            writeln!(log_file, "[ERROR] Stdout: {}\nStderr: {}", stdout_str, stderr_str)
                 .map_err(|e| format!("Failed to write to log file: {}", e))?;
             Err(format!(
-                "'cargo vendor' failed:\nStdout: {{}}\nStderr: {{}}",
+                "'cargo vendor' failed:\nStdout: {}\nStderr: {}",
                 stdout_str,
                 stderr_str
             ))
@@ -321,10 +320,10 @@ impl CargoCommand for Cargo2NixCommand {
             let stderr_str = String::from_utf8_lossy(&output.stderr);
             writeln!(log_file, "[COMMAND_STATUS] cargo2nix failed.")
                 .map_err(|e| format!("Failed to write to log file: {}", e))?;
-            writeln!(log_file, "[ERROR] Stdout: {{}}\nStderr: {{}}", stdout_str, stderr_str)
+            writeln!(log_file, "[ERROR] Stdout: {}\nStderr: {}", stdout_str, stderr_str)
                 .map_err(|e| format!("Failed to write to log file: {}", e))?;
             Err(format!(
-                "'cargo2nix' failed:\nStdout: {{}}\nStderr: {{}}",
+                "'cargo2nix' failed:\nStdout: {}\nStderr: {}",
                 stdout_str,
                 stderr_str
             ))
@@ -369,7 +368,7 @@ impl CargoCommand for RemoveRustVersionCommand {
         let output = Command::new("grep")
             .arg("-r")
             .arg("-e")
-            .arg("^rust-version = \"[0-9.]\+\"$")
+            .arg("^rust-version = \"[0-9.]+\"$")
             .arg("--include")
             .arg("Cargo.toml")
             .arg(current_dir)
@@ -419,12 +418,8 @@ impl CargoCommand for RemoveRustVersionCommand {
         }
 
         if changed_files > 0 {
-            writeln!(log_file, "[COMMAND_STATUS] Removed rust-version constraints in {} files.", changed_files)
-                .map_err(|e| format!("Failed to write to log file: {}", e))?;
             Ok(Output { status: std::process::ExitStatus::from_raw(0), stdout: Vec::new(), stderr: Vec::new() })
         } else {
-            writeln!(log_file, "[COMMAND_STATUS] No rust-version constraints found to remove.")
-                .map_err(|e| format!("Failed to write to log file: {}", e))?;
             Ok(Output { status: std::process::ExitStatus::from_raw(0), stdout: Vec::new(), stderr: Vec::new() })
         }
     }

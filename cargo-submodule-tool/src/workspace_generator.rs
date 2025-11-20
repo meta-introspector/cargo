@@ -1,4 +1,5 @@
 use std::{collections::HashMap, env, fs, path::{Path, PathBuf}};
+use serde_json;
 use std::process::Command;
 use toml_edit;
 
@@ -43,8 +44,8 @@ impl WorkspaceGenerator for DefaultWorkspaceGenerator {
                 if let Some(name) = pkg["name"].as_str() {
                     if let Some(version) = pkg["version"].as_str() {
                         // Only add if not already present or if new version is higher
-                        let current_version = all_dependencies.get(name);
-                        if current_version.is_none() || (current_version.is_some() && version > current_version.unwrap()) {
+                        let current_version = all_dependencies.get::<str>(name);
+                        if current_version.is_none() || (current_version.is_some() && version > current_version.unwrap().as_str()) {
                             all_dependencies.insert(name.to_string(), version.to_string());
                         }
                     }

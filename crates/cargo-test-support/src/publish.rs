@@ -112,7 +112,7 @@ fn _validate_upload(
 ) {
     let (actual_json, krate_bytes) = read_new_post(new_path);
 
-    snapbox::assert_data_eq!(actual_json, expected_json.is_json());
+    snapbox::assert_data_eq!(actual_json, expected_json.into_data());
 
     // Verify the tarball.
     validate_crate_contents(

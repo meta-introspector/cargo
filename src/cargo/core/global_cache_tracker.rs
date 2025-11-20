@@ -299,7 +299,7 @@ fn migrations() -> Vec<Migration> {
         Box::new(|conn| {
             conn.execute(
                 "INSERT INTO global_data (last_auto_gc) VALUES (?1)",
-                [now()],
+                [now() as i64],
             )?;
             Ok(())
         }),
@@ -414,7 +414,8 @@ impl GlobalCacheTracker {
         let rows = stmt
             .query_map([], |row| {
                 let encoded_registry_name = row.get_unwrap(0);
-                let timestamp = row.get_unwrap(1);
+                let timestamp: i64 = row.get_unwrap(1);
+                let timestamp = timestamp as u64;
                 let kind = RegistryIndex {
                     encoded_registry_name,
                 };
@@ -435,8 +436,10 @@ impl GlobalCacheTracker {
             .query_map([], |row| {
                 let encoded_registry_name = row.get_unwrap(0);
                 let crate_filename = row.get_unwrap(1);
-                let size = row.get_unwrap(2);
-                let timestamp = row.get_unwrap(3);
+                let size: i64 = row.get_unwrap(2);
+                let size = size as u64;
+                let timestamp: i64 = row.get_unwrap(3);
+                let timestamp = timestamp as u64;
                 let kind = RegistryCrate {
                     encoded_registry_name,
                     crate_filename,
@@ -459,8 +462,10 @@ impl GlobalCacheTracker {
             .query_map([], |row| {
                 let encoded_registry_name = row.get_unwrap(0);
                 let package_dir = row.get_unwrap(1);
-                let size = row.get_unwrap(2);
-                let timestamp = row.get_unwrap(3);
+                let size: Option<i64> = row.get_unwrap(2);
+                let size = size.map(|s| s as u64);
+                let timestamp: i64 = row.get_unwrap(3);
+                let timestamp = timestamp as u64;
                 let kind = RegistrySrc {
                     encoded_registry_name,
                     package_dir,
@@ -480,7 +485,8 @@ impl GlobalCacheTracker {
         let rows = stmt
             .query_map([], |row| {
                 let encoded_git_name = row.get_unwrap(0);
-                let timestamp = row.get_unwrap(1);
+                let timestamp: i64 = row.get_unwrap(1);
+                let timestamp = timestamp as u64;
                 let kind = GitDb { encoded_git_name };
                 Ok((kind, timestamp))
             })?
@@ -499,8 +505,10 @@ impl GlobalCacheTracker {
             .query_map([], |row| {
                 let encoded_git_name = row.get_unwrap(0);
                 let short_name = row.get_unwrap(1);
-                let size = row.get_unwrap(2);
-                let timestamp = row.get_unwrap(3);
+                let size: Option<i64> = row.get_unwrap(2);
+                let size = size.map(|s| s as u64);
+                let timestamp: i64 = row.get_unwrap(3);
+                let timestamp = timestamp as u64;
                 let kind = GitCheckout {
                     encoded_git_name,
                     short_name,
@@ -519,9 +527,10 @@ impl GlobalCacheTracker {
         if self.auto_gc_checked_this_session {
             return Ok(false);
         }
-        let last_auto_gc: Timestamp =
+        let last_auto_gc: i64 =
             self.conn
                 .query_row("SELECT last_auto_gc FROM global_data", [], |row| row.get(0))?;
+        let last_auto_gc = last_auto_gc as u64;
         let should_run = last_auto_gc + frequency.as_secs() < now();
         trace!(target: "gc",
             "last auto gc was {}, {}",
@@ -536,7 +545,7 @@ impl GlobalCacheTracker {
     /// completed.
     pub fn set_last_auto_gc(&self) -> CargoResult<()> {
         self.conn
-            .execute("UPDATE global_data SET last_auto_gc = ?1", [now()])?;
+            .execute("UPDATE global_data SET last_auto_gc = ?1", [now() as i64])?;
         Ok(())
     }
 
@@ -824,7 +833,7 @@ impl GlobalCacheTracker {
                 ON CONFLICT DO NOTHING",
         ))?;
         for name in names {
-            stmt.execute(params![name, now])?;
+            stmt.execute(params![name, now as i64])?;
         }
         Ok(())
     }
@@ -928,7 +937,7 @@ impl GlobalCacheTracker {
                 // Missing files should have already been taken care of by
                 // update_db_for_removed.
                 let size = paths::metadata(index_path.join(&crate_name))?.len();
-                insert_stmt.execute(params![id, crate_name, size, now])?;
+                insert_stmt.execute(params![id, crate_name, size as i64, now as i64])?;
             }
         }
         Ok(())
@@ -984,11 +993,11 @@ impl GlobalCacheTracker {
                 }
                 progress.tick(i, max, "")?;
                 let size = if populate_size {
-                    Some(du(&dir_path, table_name)?)
+                    Some(du(&dir_path, table_name)? as i64)
                 } else {
                     None
                 };
-                insert_stmt.execute(params![id, name, size, now])?;
+                insert_stmt.execute(params![id, name, size, now as i64])?;
             }
         }
         Ok(())
@@ -1033,7 +1042,7 @@ impl GlobalCacheTracker {
             // Missing files should have already been taken care of by
             // update_db_for_removed.
             let size = du(&path, table_name)?;
-            update_stmt.execute(params![size, rowid])?;
+            update_stmt.execute(params![size as i64, rowid])?;
         }
         Ok(())
     }
@@ -1053,7 +1062,7 @@ impl GlobalCacheTracker {
                 RETURNING registry_id, name"
         ))?;
         let rows = stmt
-            .query_map(params![max_age], |row| {
+            .query_map(params![max_age as i64], |row| {
                 let registry_id = row.get_unwrap(0);
                 let name: String = row.get_unwrap(1);
                 Ok((registry_id, name))
@@ -1078,11 +1087,12 @@ impl GlobalCacheTracker {
         delete_paths: &mut Vec<PathBuf>,
     ) -> CargoResult<()> {
         debug!(target: "gc", "cleaning {table_name} till under {max_size:?}");
-        let total_size: u64 = conn.query_row(
+        let total_size: i64 = conn.query_row(
             &format!("SELECT coalesce(SUM(size), 0) FROM {table_name}"),
             [],
             |row| row.get(0),
         )?;
+        let total_size = total_size as u64;
         if total_size <= max_size {
             return Ok(());
         }
@@ -1110,7 +1120,7 @@ impl GlobalCacheTracker {
                 RETURNING registry_id, name;"
         ))?;
         let rows = stmt
-            .query_map(params![total_size - max_size], |row| {
+            .query_map(params![(total_size - max_size) as i64], |row| {
                 let id = row.get_unwrap(0);
                 let name: String = row.get_unwrap(1);
                 Ok((id, name))
@@ -1167,7 +1177,7 @@ impl GlobalCacheTracker {
                     row.get_unwrap(1),
                     row.get_unwrap(2),
                     row.get_unwrap(3),
-                    row.get_unwrap(4),
+                    row.get_unwrap::<_, i64>(4) as u64,
                 ))
             })?
             .collect::<Result<Vec<(i64, i64, String, String, u64)>, _>>()?;
@@ -1208,7 +1218,8 @@ impl GlobalCacheTracker {
             .query_map([], |row| {
                 let rowid: i64 = row.get_unwrap(0);
                 let name: String = row.get_unwrap(1);
-                let timestamp: Timestamp = row.get_unwrap(2);
+                let timestamp: i64 = row.get_unwrap(2);
+                let timestamp = timestamp as u64;
                 // Size is added below so that the error doesn't need to be
                 // converted to a rusqlite error.
                 Ok((timestamp, rowid, None, name, 0))
@@ -1230,8 +1241,10 @@ impl GlobalCacheTracker {
                 let rowid = row.get_unwrap(0);
                 let db_name: String = row.get_unwrap(1);
                 let name = row.get_unwrap(2);
-                let size = row.get_unwrap(3);
-                let timestamp = row.get_unwrap(4);
+                let size: i64 = row.get_unwrap(3);
+                let size = size as u64;
+                let timestamp: i64 = row.get_unwrap(4);
+                let timestamp = timestamp as u64;
                 Ok((timestamp, rowid, Some(db_name), name, size))
             })?
             .collect::<Result<Vec<_>, _>>()?;
@@ -1290,7 +1303,7 @@ impl GlobalCacheTracker {
             "DELETE FROM registry_index WHERE timestamp < ?1
                 RETURNING name",
         )?;
-        let mut rows = stmt.query([max_age])?;
+        let mut rows = stmt.query([max_age as i64])?;
         while let Some(row) = rows.next()? {
             let name: String = row.get_unwrap(0);
             delete_paths.push(base.index.join(&name));
@@ -1316,7 +1329,7 @@ impl GlobalCacheTracker {
                 RETURNING git_id, name",
         )?;
         let rows = stmt
-            .query_map(params![max_age], |row| {
+            .query_map(params![max_age as i64], |row| {
                 let git_id = row.get_unwrap(0);
                 let name: String = row.get_unwrap(1);
                 Ok((git_id, name))
@@ -1344,7 +1357,7 @@ impl GlobalCacheTracker {
             "DELETE FROM git_db WHERE timestamp < ?1
                 RETURNING name",
         )?;
-        let mut rows = stmt.query([max_age])?;
+        let mut rows = stmt.query([max_age as i64])?;
         while let Some(row) = rows.next()? {
             let name: String = row.get_unwrap(0);
             delete_paths.push(base.git_db.join(&name));
@@ -1392,13 +1405,14 @@ macro_rules! insert_or_update_parent {
             let mut rows = select_stmt.query([parent.$encoded_name])?;
             let id = if let Some(row) = rows.next()? {
                 let id: ParentId = row.get_unwrap(0);
-                let timestamp: Timestamp = row.get_unwrap(1);
+                let timestamp: i64 = row.get_unwrap(1);
+                let timestamp = timestamp as u64;
                 if timestamp < new_timestamp - UPDATE_RESOLUTION {
-                    update_stmt.execute(params![new_timestamp, id])?;
+                    update_stmt.execute(params![new_timestamp as i64, id])?;
                 }
                 id
             } else {
-                insert_stmt.query_row(params![parent.$encoded_name, new_timestamp], |row| {
+                insert_stmt.query_row(params![parent.$encoded_name, new_timestamp as i64], |row| {
                     row.get(0)
                 })?
             };
@@ -1667,9 +1681,9 @@ impl DeferredGlobalLastUse {
             stmt.execute(params![
                 registry_id,
                 registry_crate.crate_filename,
-                registry_crate.size,
-                timestamp,
-                timestamp - UPDATE_RESOLUTION
+                registry_crate.size as i64,
+                timestamp as i64,
+                (timestamp - UPDATE_RESOLUTION) as i64
             ])?;
         }
         Ok(())
@@ -1692,9 +1706,9 @@ impl DeferredGlobalLastUse {
             stmt.execute(params![
                 registry_id,
                 registry_src.package_dir,
-                registry_src.size,
-                timestamp,
-                timestamp - UPDATE_RESOLUTION
+                registry_src.size.map(|s| s as i64),
+                timestamp as i64,
+                (timestamp - UPDATE_RESOLUTION) as i64
             ])?;
         }
 
@@ -1716,9 +1730,9 @@ impl DeferredGlobalLastUse {
             stmt.execute(params![
                 git_id,
                 git_checkout.short_name,
-                git_checkout.size,
-                timestamp,
-                timestamp - UPDATE_RESOLUTION
+                git_checkout.size.map(|s| s as i64),
+                timestamp as i64,
+                (timestamp - UPDATE_RESOLUTION) as i64
             ])?;
         }
 

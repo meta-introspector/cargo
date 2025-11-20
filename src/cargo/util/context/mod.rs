@@ -1494,7 +1494,12 @@ impl GlobalContext {
                     })?
             } else {
                 let doc = toml_dotted_keys(arg)?;
-                let doc: toml::Value = toml::Value::deserialize(doc.into_deserializer())
+                let table = doc.into_table();
+                let inline_table = table.into_inline_table();
+                let value_edit: toml_edit::Value = toml_edit::Value::InlineTable(inline_table);
+                let value_toml: toml::Value = toml::from_str(&value_edit.to_string())
+                    .context("failed to convert toml_edit::Value to toml::Value via string serialization")?;
+                let doc: toml::Value = toml::Value::deserialize(value_toml.into_deserializer())
                     .with_context(|| {
                         format!("failed to parse value from --config argument `{arg}`")
                     })?;

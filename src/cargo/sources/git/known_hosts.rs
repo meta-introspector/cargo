@@ -31,6 +31,7 @@ use base64::engine::general_purpose::STANDARD_NO_PAD;
 use git2::CertificateCheckStatus;
 use git2::cert::{Cert, SshHostKeyType};
 use hmac::Mac;
+use hmac::KeyInit;
 use std::collections::HashSet;
 use std::fmt::{Display, Write};
 use std::path::{Path, PathBuf};

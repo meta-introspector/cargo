@@ -86,14 +86,15 @@ pub fn migrate(conn: &mut Connection, migrations: &[Migration]) -> CargoResult<(
     // a file lock, but might be helpful in cases where cargo's `FileLock`
     // failed.
     let tx = conn.transaction_with_behavior(TransactionBehavior::Exclusive)?;
-    let user_version = tx.query_row("SELECT user_version FROM pragma_user_version", [], |row| {
+    let user_version: i64 = tx.query_row("SELECT user_version FROM pragma_user_version", [], |row| {
         row.get(0)
     })?;
+    let user_version = user_version as usize;
     if user_version < migrations.len() {
         for migration in &migrations[user_version..] {
             migration(&tx)?;
         }
-        tx.pragma_update(None, "user_version", &migrations.len())?;
+        tx.pragma_update(None, "user_version", &(migrations.len() as i64))?;
     }
     tx.commit()?;
     Ok(())
