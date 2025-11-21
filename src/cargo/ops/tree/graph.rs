@@ -9,6 +9,7 @@ use crate::core::{FeatureMap, FeatureValue, Package, PackageId, PackageIdSpec, W
 use crate::util::CargoResult;
 use crate::util::interning::{INTERNED_DEFAULT, InternedString};
 use std::collections::{HashMap, HashSet};
+use std::path::Path;
 
 #[derive(Debug, Copy, Clone)]
 pub struct NodeId {
@@ -354,6 +355,32 @@ impl<'a> Graph<'a> {
         // For consistent output.
         dupes.sort_unstable();
         dupes.into_iter().map(|(_node, i)| i).collect()
+    }
+
+    /// Returns a map of package names to their relative paths for a given set of nodes.
+    pub fn get_package_paths_for_nodes(
+        &self,
+        node_ids: &HashSet<NodeId>,
+        workspace_root: &Path,
+    ) -> CargoResult<HashMap<String, String>> {
+        let mut package_paths = HashMap::new();
+        for node_id in node_ids {
+            if let Node::Package { package_id, .. } = self.node(*node_id) {
+                let package = self.package_for_id(*package_id);
+                let manifest_path = package.manifest_path();
+                let relative_path = manifest_path
+                    .strip_prefix(workspace_root)
+                    .map_err(|e| anyhow::format_err!("Failed to strip prefix: {}", e))?
+                    .parent() // Get the directory containing Cargo.toml
+                    .ok_or_else(|| anyhow::format_err!("Failed to get parent directory"))?;
+
+                package_paths.insert(
+                    package_id.name().to_string(),
+                    relative_path.to_string_lossy().to_string(),
+                );
+            }
+        }
+        Ok(package_paths)
     }
 }
 
