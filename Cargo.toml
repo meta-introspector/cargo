@@ -1,21 +1,20 @@
-[workspace]
-resolver = "2"
-members = [
-  "crates/*",
-  "credential/*",
-  "benches/benchsuite",
-  "benches/capture",
-]
-exclude = [
-  "target/", # exclude bench testing
-]
+# [workspace]
+# resolver = "2"
+# members = [
+#   "crates/*",
+#   "credential/*",
+#   "benches/benchsuite",
+#   "benches/capture",
+# ]
+# exclude = [
+#   "target/", # exclude bench testing
+# [workspace.package]
+# rust-version = "1.89"  # MSRV:3
+# edition = "2024"
+# license = "MIT OR Apache-2.0"
+# homepage = "https://github.com/rust-lang/cargo"
+# repository = "https://github.com/rust-lang/cargo"
 
-[workspace.package]
-rust-version = "1.89"  # MSRV:3
-edition = "2024"
-license = "MIT OR Apache-2.0"
-homepage = "https://github.com/rust-lang/cargo"
-repository = "https://github.com/rust-lang/cargo"
 
 [workspace.dependencies]
 annotate-snippets = { version = "0.12.9", features = ["simd"] }
@@ -137,10 +136,10 @@ self_named_module_files = "warn"
 
 [package]
 name = "cargo"
-version = "0.94.0"
+version.workspace = true
 edition.workspace = true
 license.workspace = true
-rust-version = "1.91"  # MSRV:1
+rust-version.workspace = true # MSRV:1
 homepage = "https://doc.rust-lang.org/cargo/index.html"
 repository.workspace = true
 documentation = "https://docs.rs/cargo"
@@ -164,6 +163,7 @@ cargo-platform.workspace = true
 cargo-util-schemas.workspace = true
 cargo-util.workspace = true
 clap = { workspace = true, features = ["wrap_help"] }
+#clap_complete = { workspace = true, features = ["unstable-dynamic"] }
 clap_complete.workspace = true
 color-print.workspace = true
 crates-io.workspace = true
@@ -171,7 +171,7 @@ curl = { workspace = true, features = ["http2"] }
 curl-sys.workspace = true
 filetime.workspace = true
 flate2.workspace = true
-git2.workspace = true
+git2 = { workspace = true, features = ["cred"] }
 git2-curl.workspace = true
 gix.workspace = true
 glob.workspace = true
@@ -258,7 +258,9 @@ cargo-test-support.workspace = true
 gix = { workspace = true, features = ["revision"] }
 # When building Cargo for tests, a safety-measure in `gix` needs to be disabled
 # to allow sending credentials over HTTP connections.
-gix-transport = { version = "0.49.1", features = ["http-client-insecure-credentials"] }
+gix-transport = { workspace = true, features = ["http-client-insecure-credentials"] }
+#gix-transport = { version = "0.49.1", features = ["http-client-insecure-credentials"] }
+
 same-file.workspace = true
 snapbox.workspace = true
 
@@ -282,8 +284,16 @@ vendored-libgit2 = ["libgit2-sys/vendored"]
 all-static = ['vendored-openssl', 'curl/static-curl', 'curl/force-system-lib-on-osx', 'vendored-libgit2']
 # Exactly one of 'http-transport-curl' or 'http-transport-reqwest' must be enabled
 # when using Cargo as a library. By default, it is 'http-transport-curl'.
-http-transport-curl = ["gix/blocking-http-transport-curl"]
-http-transport-reqwest = ["gix/blocking-http-transport-reqwest"]
+
+http-transport-curl = [
+"gix/blocking-http-transport-curl"
+]
+http-transport-reqwest = [
+"gix/blocking-http-transport-reqwest"
+]
+
+#http-transport-curl = ["gix/blocking-http-transport-curl"]
+#http-transport-reqwest = ["gix/blocking-http-transport-reqwest"]
 
 [lints]
 workspace = true
