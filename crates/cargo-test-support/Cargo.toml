@@ -24,7 +24,7 @@ pasetors.workspace = true
 regex.workspace = true
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
-snapbox.workspace = true
+snapbox = { workspace = true, features = ["dir", "json", "regex"] }
 tar.workspace = true
 time.workspace = true
 toml = { workspace = true, features = ["display", "serde"] }

@@ -144,12 +144,12 @@ const GIT_CO_TABLE: &str = "git_checkout";
 /// As an optimization timestamps are not updated unless they are older than
 /// the given number of seconds. This helps reduce the amount of disk I/O when
 /// running cargo multiple times within a short window.
-const UPDATE_RESOLUTION: u64 = 60 * 5;
+const UPDATE_RESOLUTION: i64 = 60 * 5;
 
 /// Type for timestamps as stored in the database.
 ///
 /// These are seconds since the Unix epoch.
-type Timestamp = u64;
+type Timestamp = i64;
 
 /// The key for a registry index entry stored in the database.
 #[derive(Clone, Debug, Hash, Eq, PartialEq)]
@@ -166,7 +166,7 @@ pub struct RegistryCrate {
     /// The filename of the compressed crate, like `foo-1.2.3.crate`.
     pub crate_filename: InternedString,
     /// The size of the `.crate` file.
-    pub size: u64,
+    pub size: i64,
 }
 
 /// The key for a registry src directory entry stored in the database.
@@ -175,17 +175,7 @@ pub struct RegistrySrc {
     /// A unique name of the registry source.
     pub encoded_registry_name: InternedString,
     /// The directory name of the extracted source, like `foo-1.2.3`.
-    pub package_dir: InternedString,
-    /// Total size of the src directory in bytes.
-    ///
-    /// This can be None when the size is unknown. For example, when the src
-    /// directory already exists on disk, and we just want to update the
-    /// last-use timestamp. We don't want to take the expense of computing disk
-    /// usage unless necessary. [`GlobalCacheTracker::populate_untracked`]
-    /// will handle any actual NULL values in the database, which can happen
-    /// when the src directory is created by an older version of cargo that
-    /// did not track sizes.
-    pub size: Option<u64>,
+    pub size: Option<i64>,
 }
 
 /// The key for a git db entry stored in the database.
@@ -206,7 +196,7 @@ pub struct GitCheckout {
     ///
     /// This can be None when the size is unknown. See [`RegistrySrc::size`]
     /// for an explanation.
-    pub size: Option<u64>,
+    pub size: Option<i64>,
 }
 
 /// Filesystem paths in the global cache.
@@ -927,7 +917,7 @@ impl GlobalCacheTracker {
             for crate_name in crates {
                 // Missing files should have already been taken care of by
                 // update_db_for_removed.
-                let size = paths::metadata(index_path.join(&crate_name))?.len();
+                let size = paths::metadata(index_path.join(&crate_name))?.len() as i64;
                 insert_stmt.execute(params![id, crate_name, size, now])?;
             }
         }
@@ -984,7 +974,7 @@ impl GlobalCacheTracker {
                 }
                 progress.tick(i, max, "")?;
                 let size = if populate_size {
-                    Some(du(&dir_path, table_name)?)
+                    Some(du(&dir_path, table_name)? as i64)
                 } else {
                     None
                 };
@@ -1032,7 +1022,7 @@ impl GlobalCacheTracker {
             progress.tick(i, max, "")?;
             // Missing files should have already been taken care of by
             // update_db_for_removed.
-            let size = du(&path, table_name)?;
+            let size = du(&path, table_name)? as i64;
             update_stmt.execute(params![size, rowid])?;
         }
         Ok(())
@@ -1072,13 +1062,13 @@ impl GlobalCacheTracker {
     /// order to keep the total size under the given max size.
     fn get_registry_items_to_clean_size(
         conn: &Connection,
-        max_size: u64,
+        max_size: i64,
         table_name: &str,
         base_path: &Path,
         delete_paths: &mut Vec<PathBuf>,
     ) -> CargoResult<()> {
         debug!(target: "gc", "cleaning {table_name} till under {max_size:?}");
-        let total_size: u64 = conn.query_row(
+        let total_size: i64 = conn.query_row(
             &format!("SELECT coalesce(SUM(size), 0) FROM {table_name}"),
             [],
             |row| row.get(0),
@@ -1130,7 +1120,7 @@ impl GlobalCacheTracker {
     /// order to keep the total size under the given max size.
     fn get_registry_items_to_clean_size_both(
         conn: &Connection,
-        max_size: u64,
+        max_size: i64,
         base: &BasePaths,
         delete_paths: &mut Vec<PathBuf>,
     ) -> CargoResult<()> {
@@ -1170,8 +1160,8 @@ impl GlobalCacheTracker {
                     row.get_unwrap(4),
                 ))
             })?
-            .collect::<Result<Vec<(i64, i64, String, String, u64)>, _>>()?;
-        let mut total_size: u64 = rows.iter().map(|r| r.4).sum();
+            .collect::<Result<Vec<(i64, i64, String, String, i64)>, _>>()?;
+        let mut total_size: i64 = rows.iter().map(|r| r.4).sum();
         debug!(target: "gc", "total download cache size appears to be {total_size}");
         for (table, rowid, name, index_name, size) in rows {
             if total_size <= max_size {
@@ -1196,7 +1186,7 @@ impl GlobalCacheTracker {
     /// Paths are relative to the `git` directory in the cache directory.
     fn get_git_items_to_clean_size(
         conn: &Connection,
-        max_size: u64,
+        max_size: i64,
         base: &BasePaths,
         delete_paths: &mut Vec<PathBuf>,
     ) -> CargoResult<()> {
@@ -1211,11 +1201,11 @@ impl GlobalCacheTracker {
                 let timestamp: Timestamp = row.get_unwrap(2);
                 // Size is added below so that the error doesn't need to be
                 // converted to a rusqlite error.
-                Ok((timestamp, rowid, None, name, 0))
+                Ok((timestamp, rowid, None, name, 0i64))
             })?
             .collect::<Result<Vec<_>, _>>()?;
         for info in &mut git_info {
-            let size = cargo_util::du(&base.git_db.join(&info.3), &[])?;
+            let size = cargo_util::du(&base.git_db.join(&info.3), &[])? as i64;
             info.4 = size;
         }
 
@@ -1230,7 +1220,7 @@ impl GlobalCacheTracker {
                 let rowid = row.get_unwrap(0);
                 let db_name: String = row.get_unwrap(1);
                 let name = row.get_unwrap(2);
-                let size = row.get_unwrap(3);
+                let size: i64 = row.get_unwrap(3);
                 let timestamp = row.get_unwrap(4);
                 Ok((timestamp, rowid, Some(db_name), name, size))
             })?
@@ -1246,7 +1236,7 @@ impl GlobalCacheTracker {
         let mut delete_db_stmt = conn.prepare_cached("DELETE FROM git_db WHERE rowid = ?1")?;
         let mut delete_co_stmt =
             conn.prepare_cached("DELETE FROM git_checkout WHERE rowid = ?1")?;
-        let mut total_size: u64 = git_info.iter().map(|r| r.4).sum();
+        let mut total_size: i64 = git_info.iter().map(|r| r.4).sum();
         debug!(target: "gc", "total git cache size appears to be {total_size}");
         while let Some((_timestamp, rowid, db_name, name, size)) = git_info.pop() {
             if total_size <= max_size {
@@ -1781,7 +1771,7 @@ impl DeferredGlobalLastUse {
 fn to_timestamp(t: &SystemTime) -> Timestamp {
     t.duration_since(SystemTime::UNIX_EPOCH)
         .expect("invalid clock")
-        .as_secs()
+        .as_secs() as i64
 }
 
 /// Returns the current time.
@@ -1820,17 +1810,17 @@ pub fn is_silent_error(e: &anyhow::Error) -> bool {
 
 /// Returns the disk usage for a git checkout directory.
 #[tracing::instrument]
-fn du_git_checkout(path: &Path) -> CargoResult<u64> {
+fn du_git_checkout(path: &Path) -> CargoResult<i64> {
     // !.git is used because clones typically use hardlinks for the git
     // contents. TODO: Verify behavior on Windows.
     // TODO: Or even better, switch to worktrees, and remove this.
-    cargo_util::du(&path, &["!.git"])
+    Ok(cargo_util::du(&path, &["!.git"])? as i64)
 }
 
-fn du(path: &Path, table_name: &str) -> CargoResult<u64> {
+fn du(path: &Path, table_name: &str) -> CargoResult<i64> {
     if table_name == GIT_CO_TABLE {
         du_git_checkout(path)
     } else {
-        cargo_util::du(&path, &[])
+        Ok(cargo_util::du(&path, &[])? as i64)
     }
 }
