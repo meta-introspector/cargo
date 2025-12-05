@@ -64,7 +64,7 @@ impl UnitTestError {
 ///
 /// On error, the returned [`CliError`] will have the appropriate process exit
 /// code that Cargo should use.
-use crate::core::compiler::UserIntent;
+use crate::core::compiler::build_config::UserIntent;
 use crate::ops::CompileOptions;
 
 pub fn parse_test_args(

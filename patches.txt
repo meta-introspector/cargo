@@ -1528,7 +1528,7 @@ index 41836e793..2addfda93 100644
  
          Ok(unpack_dir.to_path_buf())
 diff --git a/src/cargo/util/command_prelude.rs b/src/cargo/util/command_prelude.rs
-index 8f139ca58..82b9970eb 100644
+index 8f139ca58..82b9970eb 1006448f139ca58..82b9970ebo
 --- a/src/cargo/util/command_prelude.rs
 +++ b/src/cargo/util/command_prelude.rs
 @@ -23,7 +23,6 @@ use cargo_util_schemas::manifest::ProfileName;

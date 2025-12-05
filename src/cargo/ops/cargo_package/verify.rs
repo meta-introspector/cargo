@@ -22,7 +22,7 @@ use crate::core::Workspace;
 use crate::core::compiler::BuildConfig;
 use crate::core::compiler::DefaultExecutor;
 use crate::core::compiler::Executor;
-use crate::core::compiler::UserIntent;
+use crate::core::compiler::build_config::UserIntent;
 use crate::ops;
 use crate::sources::PathSource;
 use crate::util;

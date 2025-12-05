@@ -6,7 +6,8 @@ use std::sync::{Arc, Mutex};
 
 use crate::core::PackageId;
 use crate::core::compiler::compilation::{self, UnitOutput};
-use crate::core::compiler::{self, Unit, UserIntent, artifact};
+use crate::core::compiler::{self, Unit, artifact};
+use crate::core::compiler::build_config::UserIntent;
 use crate::util::cache_lock::CacheLockMode;
 use crate::util::errors::CargoResult;
 use annotate_snippets::{Level, Message};

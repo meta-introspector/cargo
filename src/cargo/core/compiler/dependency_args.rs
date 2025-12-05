@@ -257,7 +257,7 @@ pub fn add_plugin_deps(
     Ok(())
 }
 
-fn get_dynamic_search_path(path: &Path) -> &Path {
+pub fn get_dynamic_search_path(path: &Path) -> &Path {
     match path.to_str().and_then(|s| s.split_once("=")) {
         Some(("native" | "crate" | "dependency" | "framework" | "all", path)) => Path::new(path),
         _ => path,
@@ -269,7 +269,7 @@ fn get_dynamic_search_path(path: &Path) -> &Path {
 // Strip off prefixes like "native=" or "framework=" and filter out directories
 // **not** inside our output directory since they are likely spurious and can cause
 // clashes with system shared libraries (issue #3366).
-fn filter_dynamic_search_path<'a, I>(paths: I, root_output: &Path) -> Vec<PathBuf>
+pub fn filter_dynamic_search_path<'a, I>(paths: I, root_output: &Path) -> Vec<PathBuf>
 where
     I: Iterator<Item = &'a PathBuf>,
 {
@@ -280,10 +280,8 @@ where
             search_path.push(dir.to_path_buf());
         } else {
             debug!(
-                "Not including path {} in runtime library search path because it is \ 
-                 outside target root {}",
-                dir.display(),
-                root_output.display()
+                "Not including path {} in runtime library search path because it is a platform library.",
+                dir.display()
             );
         }
     }

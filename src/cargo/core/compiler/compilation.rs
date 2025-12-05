@@ -10,8 +10,8 @@ use cargo_util::{ProcessBuilder, paths};
 use crate::core::Package;
 use crate::core::compiler::BuildContext;
 use crate::core::compiler::RustdocFingerprint;
-use crate::core::compiler::apply_env_config;
 use crate::core::compiler::{CompileKind, Unit, UnitHash};
+use crate::core::compiler::dependency_args::filter_dynamic_search_path;
 use crate::util::{CargoResult, GlobalContext, context};
 
 /// Represents the kind of process we are creating.
@@ -305,7 +305,7 @@ impl<'gctx> Compilation<'gctx> {
                 // However, there is no way to separate these two phase, so this
                 // hack is added for both phases.
                 // TODO: handle doctest-xcompile
-                search_path.extend(super::filter_dynamic_search_path(
+                search_path.extend(filter_dynamic_search_path(
                     self.native_dirs.iter(),
                     &self.root_output[&CompileKind::Host],
                 ));
@@ -313,7 +313,7 @@ impl<'gctx> Compilation<'gctx> {
             search_path.push(self.deps_output[&CompileKind::Host].clone());
         } else {
             if let Some(path) = self.root_output.get(&kind) {
-                search_path.extend(super::filter_dynamic_search_path(
+                search_path.extend(filter_dynamic_search_path(
                     self.native_dirs.iter(),
                     path,
                 ));
@@ -384,7 +384,9 @@ impl<'gctx> Compilation<'gctx> {
 
         cmd.cwd(pkg.root());
 
-        apply_env_config(self.gctx, &mut cmd)?;
+        for (key, val) in self.gctx.env_config()?.iter() {
+            cmd.env(key, val);
+        }
 
         Ok(cmd)
     }

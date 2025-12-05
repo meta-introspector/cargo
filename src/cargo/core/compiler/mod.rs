@@ -29,7 +29,7 @@
 //! [`ops::cargo_compile::compile`]: crate::ops::compile
 
 pub mod artifact;
-mod build_config;
+pub mod build_config;
 pub(crate) mod build_context;
 pub(crate) mod build_runner;
 mod compilation;
@@ -90,7 +90,7 @@ pub use crate::util::interning::InternedString;
 pub use crate::util::lints::get_key_value;
 pub use crate::util::machine_message::{self, Message};
 pub use crate::util::OnceExt;
-pub use crate::util::{add_path_args, internal, paths};
+pub use crate::util::{add_path_args, internal};
 pub use cargo_util::{ProcessBuilder, ProcessError, paths};
 pub use cargo_util_schemas::manifest::{TomlDebugInfo, TomlTrimPaths, TomlTrimPathsValue};
 pub use rustfix::diagnostics::Applicability;

@@ -3,7 +3,7 @@ use std::collections::{HashMap, HashSet};
 use std::fmt::Write;
 
 use crate::core::Workspace;
-use crate::core::compiler::UserIntent;
+use crate::core::compiler::build_config::UserIntent;
 use crate::core::compiler::rustdoc::RustdocScrapeExamples;
 use crate::core::compiler::unit_dependencies::IsArtifact;
 use crate::core::compiler::{CompileKind, CompileMode, Unit};

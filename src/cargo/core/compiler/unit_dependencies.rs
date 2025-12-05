@@ -20,7 +20,7 @@ use std::collections::{HashMap, HashSet};
 use tracing::trace;
 
 use crate::CargoResult;
-use crate::core::compiler::UserIntent;
+use crate::core::compiler::build_config::UserIntent;
 use crate::core::compiler::artifact::match_artifacts_kind_with_targets;
 use crate::core::compiler::unit_graph::{UnitDep, UnitGraph};
 use crate::core::compiler::{

@@ -18,6 +18,7 @@ use std::ops::Range;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, LazyLock};
 use std::os::unix::ffi::OsStrExt;
+use chrono::Local;
 
 use annotate_snippets::{AnnotationKind, Group, Level, Renderer, Snippet};
 use anyhow::{Context as _, Error};
@@ -230,7 +231,7 @@ fn make_failed_scrape_diagnostic(
         .unwrap_or(&manifest_path);
 
     format!(
-        "{top_line}
+        "{}
     Try running with `--verbose` to see the error message.
     If an example should not be scanned, then consider adding `doc-scrape-examples = false` to its `[[example]]` definition in {}",
         top_line,
@@ -411,7 +412,19 @@ fn rustc_work(
             })
             .with_context(|| {
                 // adapted from rustc_errors/src/lib.rs
-                let warnings = match output_options.warnings_seen {
+                let warnings_str = match output_options.warnings_seen {
                     0 => String::new(),
                     1 => "; 1 warning emitted".to_string(),
-                    count => format!(
+                    count => format!("; {} warnings emitted", count),
+                };
+                let errors_str = match output_options.errors_seen {
+                    0 => String::new(),
+                    1 => " due to 1 previous error".to_string(),
+                    count => format!(" due to {} previous errors", count),
+                };
+                // Combine everything for the context message
+                format!("could not compile `{}`{}{}", name, errors_str, warnings_str)
+            });
+        result
+    }))
+}

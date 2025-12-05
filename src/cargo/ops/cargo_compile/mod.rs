@@ -39,12 +39,12 @@ use std::collections::{HashMap, HashSet};
 use std::hash::{Hash, Hasher};
 use std::sync::Arc;
 
-use crate::core::compiler::UserIntent;
+use crate::core::compiler::build_config::UserIntent;
 use crate::core::compiler::unit_dependencies::build_unit_dependencies;
 use crate::core::compiler::unit_graph::{self, UnitDep, UnitGraph};
 use crate::core::compiler::{BuildConfig, BuildContext, BuildRunner, Compilation};
 use crate::core::compiler::{CompileKind, CompileTarget, RustcTargetData, Unit};
-use crate::core::compiler::{CrateType, TargetInfo, apply_env_config, standard_lib};
+use crate::core::compiler::{CrateType, TargetInfo, standard_lib};
 use crate::core::compiler::{DefaultExecutor, Executor, UnitInterner};
 use crate::core::profiles::Profiles;
 use crate::core::resolver::features::{self, CliFeatures, FeaturesFor};
@@ -210,7 +210,9 @@ pub fn print<'a>(
         }
         let target_info = TargetInfo::new(gctx, &build_config.requested_kinds, &rustc, *kind)?;
         let mut process = rustc.process();
-        apply_env_config(gctx, &mut process)?;
+        for (key, val) in gctx.env_config()?.iter() {
+            process.env(key, val);
+        }
         process.args(&target_info.rustflags);
         if let Some(args) = target_rustc_args {
             process.args(args);

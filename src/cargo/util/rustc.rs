@@ -10,7 +10,6 @@ use filetime::FileTime;
 use serde::{Deserialize, Serialize};
 use tracing::{debug, info, warn};
 
-use crate::core::compiler::apply_env_config;
 use crate::util::interning::InternedString;
 use crate::util::{CargoResult, GlobalContext, StableHasher};
 
@@ -62,7 +61,9 @@ impl Rustc {
         let mut cmd = ProcessBuilder::new(&path)
             .wrapped(workspace_wrapper.as_ref())
             .wrapped(wrapper.as_deref());
-        apply_env_config(gctx, &mut cmd)?;
+        for (key, val) in gctx.env_config()?.iter() {
+            cmd.env(key, val);
+        }
         cmd.arg("-vV");
         let verbose_version = cache.cached_output(&cmd, 0)?.0;
 

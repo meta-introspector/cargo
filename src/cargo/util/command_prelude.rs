@@ -32,7 +32,7 @@ use std::ffi::{OsStr, OsString};
 use std::path::Path;
 use std::path::PathBuf;
 
-pub use crate::core::compiler::UserIntent;
+pub use crate::core::compiler::build_config::UserIntent;
 pub use crate::{CliError, CliResult, GlobalContext};
 pub use clap::{Arg, ArgAction, ArgMatches, value_parser, ValueHint};
 

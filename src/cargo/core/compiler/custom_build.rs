@@ -31,7 +31,9 @@
 //! [`CompileMode::RunCustomBuild`]: crate::core::compiler::CompileMode::RunCustomBuild
 //! [instructions]: https://doc.rust-lang.org/cargo/reference/build-scripts.html#outputs-of-the-build-script
 
-use super::{BuildRunner, Job, Unit, Work, fingerprint, get_dynamic_search_path};
+use super::{BuildRunner, Unit, fingerprint};
+use super::job_queue::{Job, Work};
+use super::dependency_args::get_dynamic_search_path;
 use crate::core::compiler::CompileMode;
 use crate::core::compiler::artifact;
 use crate::core::compiler::build_runner::UnitHash;

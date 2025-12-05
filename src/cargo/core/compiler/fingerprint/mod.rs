@@ -403,7 +403,8 @@ use crate::util::{StableHasher, internal, path_args};
 use crate::{CARGO_ENV, GlobalContext};
 
 use super::custom_build::BuildDeps;
-use super::{BuildContext, BuildRunner, FileFlavor, Job, Unit, Work};
+use super::{BuildContext, BuildRunner, FileFlavor, Unit};
+use super::job_queue::{Job, Work};
 
 pub use self::dep_info::Checksum;
 pub use self::dep_info::parse_dep_info;

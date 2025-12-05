@@ -11,7 +11,6 @@ use crate::core::compiler::CompileKind;
 use crate::core::compiler::CompileMode;
 use crate::core::compiler::CompileTarget;
 use crate::core::compiler::CrateType;
-use crate::core::compiler::apply_env_config;
 use crate::core::{Dependency, Package, Target, TargetKind, Workspace};
 use crate::util::context::{GlobalContext, StringList, TargetConfig};
 use crate::util::interning::InternedString;
@@ -178,7 +177,9 @@ impl TargetInfo {
             //
             // Search `--print` to see what we query so far.
             let mut process = rustc.workspace_process();
-            apply_env_config(gctx, &mut process)?;
+            for (key, val) in gctx.env_config()?.iter() {
+                process.env(key, val);
+            }
             process
                 .arg("-")
                 .arg("--crate-name")
@@ -317,7 +318,9 @@ impl TargetInfo {
             // target-spec when the '-Zbuild-std' option is passed.
             if gctx.cli_unstable().build_std.is_some() {
                 let mut target_spec_process = rustc.workspace_process();
-                apply_env_config(gctx, &mut target_spec_process)?;
+                for (key, val) in gctx.env_config()?.iter() {
+                    target_spec_process.env(key, val);
+                }
                 target_spec_process
                     .arg("--print=target-spec-json")
                     .arg("-Zunstable-options")

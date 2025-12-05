@@ -1,6 +1,6 @@
 use crate::core::compiler::BuildConfig;
 use crate::core::compiler::RustcTargetData;
-use crate::core::compiler::UserIntent;
+use crate::core::compiler::build_config::UserIntent;
 use crate::core::compiler::standard_lib;
 use crate::core::{PackageSet, Resolve, Workspace};
 use crate::ops;

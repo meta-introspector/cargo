@@ -261,13 +261,15 @@ impl ProcessBuilder {
         if exit.success() {
             Ok(())
         } else {
-            Err(ProcessError::new(
-                &format!("process didn't exit successfully: {}", self),
-                Some(exit),
-                None,
-            )
-            .into())
-        }
+                        let cmd_str = format!("{}", self);
+                        eprintln!("\n./rerun.sh {}", cmd_str);
+                        let err_msg = format!("process didn't exit successfully: {}", cmd_str);
+                        Err(ProcessError::new(
+                            &err_msg,
+                            Some(exit),
+                            None,
+                        )
+                        .into())        }
     }
 
     /// Replaces the current process with the target process.
@@ -325,13 +327,15 @@ impl ProcessBuilder {
         if output.status.success() {
             Ok(output)
         } else {
-            Err(ProcessError::new(
-                &format!("process didn't exit successfully: {}", self),
-                Some(output.status),
-                Some(&output),
-            )
-            .into())
-        }
+                        let cmd_str = format!("{}", self);
+                        eprintln!("\n./rerun.sh {}", cmd_str);
+                        let err_msg = format!("process didn't exit successfully: {}", cmd_str);
+                        Err(ProcessError::new(
+                            &err_msg,
+                            Some(output.status),
+                            Some(&output),
+                        )
+                        .into())        }
     }
 
     /// Executes a command, passing each line of stdout and stderr to the supplied callbacks, which
@@ -439,8 +443,11 @@ impl ProcessBuilder {
                 );
                 bail!(anyhow::Error::new(cx).context(e));
             } else if !output.status.success() {
+                let cmd_str = format!("{}", self);
+                eprintln!("\n./rerun.sh {}", cmd_str);
+                let err_msg = format!("process didn't exit successfully: {}", cmd_str);
                 bail!(ProcessError::new(
-                    &format!("process didn't exit successfully: {}", self),
+                    &err_msg,
                     Some(output.status),
                     to_print,
                 ));
