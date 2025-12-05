@@ -614,7 +614,14 @@ impl<'gctx> DrainState<'gctx> {
             }
             Message::Stderr(err) => {
                 if build_runner.bcx.gctx.shell().verbosity() == Verbosity::Quiet {
-                    return Ok(()); // Suppress output when quiet
+                    let message_str = String::from_utf8_lossy(err.as_bytes());
+                    let tag = "[SUPPRESSED_QUIET_DRAIN_STDERR] ".as_bytes();
+                    if message_str.to_lowercase().contains("err") {
+                        build_runner.bcx.gctx.shell().err().write_all(tag)?;
+                        build_runner.bcx.gctx.shell().err().write_all(err.as_bytes())?;
+                        build_runner.bcx.gctx.shell().err().write_all(b"\n")?;
+                    }
+                    return Ok(());
                 }
                 let mut shell = build_runner.bcx.gctx.shell();
                 shell.print_ansi_stderr(err.as_bytes())?;

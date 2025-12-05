@@ -82,14 +82,21 @@ impl<'a, 'gctx> JobState<'a, 'gctx> {
     }
 
     pub fn stderr(&self, stderr: String) -> CargoResult<()> {
-        if let Some(dedupe) = self.output {
+        if let Some(dedupe) = self.output { // This path is for jobs on the main thread
             if dedupe.gctx.shell().verbosity() == crate::core::Verbosity::Quiet {
-                return Ok(()); // Suppress output when quiet
+                let message_str = String::from_utf8_lossy(stderr.as_bytes());
+                let tag = "[SUPPRESSED_QUIET_JOB_STDERR] ".as_bytes();
+                if message_str.to_lowercase().contains("err") {
+                    dedupe.gctx.shell().err().write_all(tag)?;
+                    dedupe.gctx.shell().err().write_all(stderr.as_bytes())?;
+                    dedupe.gctx.shell().err().write_all(b"\n")?;
+                }
+                return Ok(());
             }
             let mut shell = dedupe.gctx.shell();
             shell.print_ansi_stderr(stderr.as_bytes())?;
             shell.err().write_all(b"\n")?;
-        } else {
+        } else { // This path is for jobs on spawned threads
             self.messages.push_bounded(Message::Stderr(stderr));
         }
         Ok(())

@@ -62,6 +62,7 @@ use std::io::{BufRead, BufWriter, Write};
 use std::ops::Range;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, LazyLock};
+use std::os::unix::ffi::OsStrExt; // Added
 
 use annotate_snippets::{AnnotationKind, Group, Level, Renderer, Snippet};
 use anyhow::{Context as _, Error};
@@ -158,8 +159,41 @@ impl Executor for DefaultExecutor {
         on_stdout_line: &mut dyn FnMut(&str) -> CargoResult<()>,
         on_stderr_line: &mut dyn FnMut(&str) -> CargoResult<()>,
     ) -> CargoResult<()> {
-        cmd.exec_with_streaming(on_stdout_line, on_stderr_line, false)
-            .map(drop)
+        let mut stdout_buffer = Vec::new();
+        let mut stderr_buffer = Vec::new();
+
+        let mut captured_on_stdout_line = |line: &str| {
+            stdout_buffer.push(line.to_string());
+            on_stdout_line(line)
+        };
+        let mut captured_on_stderr_line = |line: &str| {
+            stderr_buffer.push(line.to_string());
+            on_stderr_line(line)
+        };
+
+        let result = cmd
+            .exec_with_streaming(
+                &mut captured_on_stdout_line,
+                &mut captured_on_stderr_line,
+                false,
+            )
+            .map(drop);
+
+        if let Err(e) = &result {
+            // Generate reproduction script on failure
+            if let Err(script_err) = generate_repro_script(
+                cmd,
+                id,
+                _target,
+                &stdout_buffer,
+                &stderr_buffer,
+            ) {
+                // Log the script generation error, but don't fail the build because of it
+                eprintln!("Failed to generate reproduction script: {:?}", script_err);
+            }
+        }
+
+        result
     }
 }
 
@@ -211,7 +245,7 @@ fn compile<'gctx>(
             } else {
                 // We always replay the output cache,
                 // since it might contain future-incompat-report messages
-                let show_diagnostics = build_runner.bcx.gctx.shell().verbosity() != Verbosity::Quiet && unit.show_warnings(bcx.gctx)
+                let show_diagnostics = unit.show_warnings(bcx.gctx)
                     && build_runner.bcx.gctx.warning_handling()? != WarningHandling::Allow;
                 let manifest = ManifestErrorContext::new(build_runner, unit);
                 let work = replay_output_cache(
@@ -1972,7 +2006,8 @@ impl OutputOptions {
         // Remove old cache, ignore ENOENT, which is the common case.
         drop(fs::remove_file(&path));
         let cache_cell = Some((path, OnceCell::new()));
-        let show_diagnostics = build_runner.bcx.gctx.shell().verbosity() != Verbosity::Quiet && (build_runner.bcx.gctx.warning_handling().unwrap_or_default() != WarningHandling::Allow);
+        let show_diagnostics =
+            build_runner.bcx.gctx.warning_handling().unwrap_or_default() != WarningHandling::Allow;
         OutputOptions {
             format: build_runner.bcx.build_config.message_format,
             cache_cell,
@@ -2559,3 +2594,86 @@ fn rustdoc_dep_info_loc(build_runner: &BuildRunner<'_, '_>, unit: &Unit) -> Path
     loc.set_extension("d");
     loc
 }
+
+fn generate_repro_script(
+    cmd: &ProcessBuilder,
+    id: PackageId,
+    target: &Target,
+    stdout_content: &[String],
+    stderr_content: &[String],
+) -> CargoResult<()> {
+    use std::fs::File;
+    use std::io::Write;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    let timestamp = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
+
+    let script_name = format!(
+        "cargo-repro-script-{}-{}-{}.sh",
+        id.name(),
+        target.name(),
+        timestamp
+    );
+    let mut script_file = File::create(&script_name)
+        .with_context(|| format!("Failed to create reproduction script file: {}", script_name))?;
+
+    writeln!(script_file, "#!/bin/bash")?;
+    writeln!(script_file)?;
+    writeln!(script_file, "# Reproduction script for failing rustc invocation")?;
+    writeln!(script_file, "# Package: {}", id.name())?;
+    writeln!(script_file, "# Target: {}", target.name())?;
+    writeln!(script_file, "# Timestamp: {}", timestamp)?;
+    writeln!(script_file)?;
+
+    // Set environment variables
+    for (key, value_option) in cmd.get_envs() {
+        let key_lossy = String::from_utf8_lossy(key.as_bytes());
+        if let Some(value_os_string) = value_option {
+            if let Some(value_str) = value_os_string.to_str() {
+                writeln!(
+                    script_file,
+                    "export {}='{}'",
+                    key_lossy,
+                    value_str
+                )?;
+            }
+        }
+    }
+    writeln!(script_file)?;
+
+    // Change current working directory
+    if let Some(cwd) = cmd.get_cwd() {
+        writeln!(script_file, "cd '{}'", cwd.to_string_lossy())?;
+    }
+    writeln!(script_file)?;
+
+    // Write rustc command
+    write!(script_file, "'{}'", cmd.get_program().to_string_lossy())?;
+    for arg in cmd.get_args() {
+        write!(script_file, " '{}'", arg.to_string_lossy())?;
+    }
+    writeln!(script_file, " 1> stdout.log 2> stderr.log")?;
+    writeln!(script_file)?;
+
+    writeln!(script_file, "echo \"--- Captured stdout ---\"")?;
+    for line in stdout_content {
+        writeln!(script_file, "echo \"{}\"", line.replace('"', "\\\""))?;
+    }
+    writeln!(script_file, "echo \"--- Captured stderr ---\"")?;
+    for line in stderr_content {
+        writeln!(script_file, "echo \"{}\"", line.replace('"', "\\\""))?;
+    }
+    writeln!(script_file)?;
+
+    // Make the script executable
+    use std::os::unix::fs::PermissionsExt;
+    let mut perms = script_file.metadata()?.permissions();
+    perms.set_mode(0o755);
+    script_file.set_permissions(perms)?;
+
+    Ok(())
+}
+

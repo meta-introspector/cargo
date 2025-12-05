@@ -111,7 +111,6 @@ pub fn cli() -> Command {
         .arg_target_triple_with_candidates(
             "Filter dependencies matching the given target-triple (default host platform). \
             Pass `all` to include all targets.",
-            || Ok(get_target_triples_with_all()),
         )
         .arg_manifest_path()
         .arg_lockfile_path()

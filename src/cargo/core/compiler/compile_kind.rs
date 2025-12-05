@@ -91,8 +91,9 @@ impl CompileKind {
                     // with the compiling machine's target triple.
 
                     if value.as_str() == "host-tuple" {
-                        let host_triple = env!("RUST_HOST_TARGET");
-                        Ok(CompileKind::Target(CompileTarget::new(host_triple)?))
+                        let host_triple = std::env::var("RUST_HOST_TARGET")
+                            .expect("RUST_HOST_TARGET environment variable not set at runtime.");
+                        Ok(CompileKind::Target(CompileTarget::new(&host_triple)?))
                     } else {
                         Ok(CompileKind::Target(CompileTarget::new(value.as_str())?))
                     }

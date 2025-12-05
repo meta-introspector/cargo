@@ -76,8 +76,12 @@ pub fn version() -> VersionInfo {
         // +1 of rustc's minor version (that is, `rustc 1.11.0` corresponds to
         // `cargo `0.12.0`). The versions always get bumped in lockstep, so
         // this should continue to hold.
-        let minor = env!("CARGO_PKG_VERSION_MINOR").parse::<u8>().unwrap() - 1;
-        let patch = env!("CARGO_PKG_VERSION_PATCH").parse::<u8>().unwrap();
+        let minor = std::env::var("CARGO_PKG_VERSION_MINOR")
+            .expect("CARGO_PKG_VERSION_MINOR not set at runtime")
+            .parse::<u8>().unwrap() - 1;
+        let patch = std::env::var("CARGO_PKG_VERSION_PATCH")
+            .expect("CARGO_PKG_VERSION_PATCH not set at runtime")
+            .parse::<u8>().unwrap();
         format!("1.{}.{}", minor, patch)
     });
 

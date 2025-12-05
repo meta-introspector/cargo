@@ -95,14 +95,14 @@ pub trait CommandExt: Sized {
             ._arg(
                 multi_opt("exclude", "SPEC", exclude_help)
                     .help_heading(heading::PACKAGE_SELECTION)
-                    .value_parser(clap::builder::ValueParser::from(move |s: &'_ str| get_ws_member_candidates().map_err(|e| clap::Error::raw(clap::error::ErrorKind::ValueValidation, e.to_string())))),
+                    .value_parser(clap::builder::ValueParser::string()),
             )
             ._arg(unsupported_short_arg)
             ._arg(
                 optional_multi_opt("package", "SPEC", package)
                     .short('p')
                     .help_heading(heading::PACKAGE_SELECTION)
-                    .value_parser(clap::builder::ValueParser::from(move |s: &'_ str| package_completion())),
+                    .value_parser(clap::builder::ValueParser::string()),
             )
     }
 
@@ -115,7 +115,7 @@ pub trait CommandExt: Sized {
             optional_multi_opt("package", "SPEC", package)
                 .short('p')
                 .help_heading(heading::PACKAGE_SELECTION)
-                .value_parser(clap::builder::ValueParser::from(move |s: &'_ str| package_completion())),
+                .value_parser(clap::builder::ValueParser::string()),
         )
     }
 
@@ -125,7 +125,7 @@ pub trait CommandExt: Sized {
                 .short('p')
                 .value_name("SPEC")
                 .help_heading(heading::PACKAGE_SELECTION)
-                .value_parser(clap::builder::ValueParser::from(move |s: &'_ str| get_ws_member_candidates().map_err(|e| clap::Error::raw(clap::error::ErrorKind::ValueValidation, e.to_string())))),
+                .value_parser(clap::builder::ValueParser::string()),
         )
     }
 
@@ -191,13 +191,13 @@ pub trait CommandExt: Sized {
             ._arg(
                 optional_multi_opt("test", "NAME", test)
                     .help_heading(heading::TARGET_SELECTION)
-                    .value_parser(clap::builder::ValueParser::from(move |s: &'_ str| get_crate_candidates(TargetKind::Test).map_err(|e| clap::Error::raw(clap::error::ErrorKind::ValueValidation, e.to_string())))),
+                    .value_parser(clap::builder::ValueParser::string()),
             )
             ._arg(flag("benches", benches).help_heading(heading::TARGET_SELECTION))
             ._arg(
                 optional_multi_opt("bench", "NAME", bench)
                     .help_heading(heading::TARGET_SELECTION)
-                    .value_parser(clap::builder::ValueParser::from(move |s: &'_ str| get_crate_candidates(TargetKind::Bench).map_err(|e| clap::Error::raw(clap::error::ErrorKind::ValueValidation, e.to_string())))),
+                    .value_parser(clap::builder::ValueParser::string()),
             )
             ._arg(flag("all-targets", all).help_heading(heading::TARGET_SELECTION))
     }
@@ -215,13 +215,13 @@ pub trait CommandExt: Sized {
             ._arg(
                 optional_multi_opt("bin", "NAME", bin)
                     .help_heading(heading::TARGET_SELECTION)
-                    .value_parser(clap::builder::ValueParser::from(move |s: &'_ str| get_crate_candidates(TargetKind::Bin).map_err(|e| clap::Error::raw(clap::error::ErrorKind::ValueValidation, e.to_string())))),
+                    .value_parser(clap::builder::ValueParser::string()),
             )
             ._arg(flag("examples", examples).help_heading(heading::TARGET_SELECTION))
             ._arg(
                 optional_multi_opt("example", "NAME", example)
                     .help_heading(heading::TARGET_SELECTION)
-                    .value_parser(clap::builder::ValueParser::from(move |s: &'_ str| get_crate_candidates(TargetKind::ExampleBin).map_err(|e| clap::Error::raw(clap::error::ErrorKind::ValueValidation, e.to_string())))),
+                    .value_parser(clap::builder::ValueParser::string()),
             )
     }
 
@@ -235,13 +235,13 @@ pub trait CommandExt: Sized {
         self._arg(
             optional_multi_opt("bin", "NAME", bin)
                 .help_heading(heading::TARGET_SELECTION)
-                .value_parser(clap::builder::ValueParser::from(move |s: &'_ str| get_crate_candidates(TargetKind::Bin).map_err(|e| clap::Error::raw(clap::error::ErrorKind::ValueValidation, e.to_string())))),
+                .value_parser(clap::builder::ValueParser::string()),
         )
         ._arg(flag("bins", bins).help_heading(heading::TARGET_SELECTION))
         ._arg(
             optional_multi_opt("example", "NAME", example)
                 .help_heading(heading::TARGET_SELECTION)
-                .value_parser(clap::builder::ValueParser::from(move |s: &'_ str| get_crate_candidates(TargetKind::ExampleBin).map_err(|e| clap::Error::raw(clap::error::ErrorKind::ValueValidation, e.to_string())))),
+                .value_parser(clap::builder::ValueParser::string()),
         )
         ._arg(flag("examples", examples).help_heading(heading::TARGET_SELECTION))
     }
@@ -250,12 +250,12 @@ pub trait CommandExt: Sized {
         self._arg(
             optional_multi_opt("bin", "NAME", bin)
                 .help_heading(heading::TARGET_SELECTION)
-                .value_parser(clap::builder::ValueParser::from(move |s: &'_ str| get_crate_candidates(TargetKind::Bin).map_err(|e| clap::Error::raw(clap::error::ErrorKind::ValueValidation, e.to_string())))),
+                .value_parser(clap::builder::ValueParser::string()),
         )
         ._arg(
             optional_multi_opt("example", "NAME", example)
                 .help_heading(heading::TARGET_SELECTION)
-                .value_parser(clap::builder::ValueParser::from(move |s: &'_ str| get_crate_candidates(TargetKind::ExampleBin).map_err(|e| clap::Error::raw(clap::error::ErrorKind::ValueValidation, e.to_string())))),
+                .value_parser(clap::builder::ValueParser::string()),
         )
     }
 
@@ -268,7 +268,7 @@ pub trait CommandExt: Sized {
             )
             .short('F')
             .help_heading(heading::FEATURE_SELECTION)
-            .value_parser(clap::builder::ValueParser::from(move |s: &'_ str| get_feature_candidates().map_err(|e| clap::Error::raw(clap::error::ErrorKind::ValueValidation, e.to_string())))),
+            .value_parser(clap::builder::ValueParser::string()),
         )
         ._arg(
             flag("all-features", "Activate all available features")
@@ -297,7 +297,7 @@ pub trait CommandExt: Sized {
             opt("profile", profile)
                 .value_name("PROFILE-NAME")
                 .help_heading(heading::COMPILATION_OPTIONS)
-                .value_parser(clap::builder::ValueParser::from(move |s: &'_ str| Ok::<Vec<String>, clap::Error>(get_profile_candidates()))),
+                .value_parser(clap::builder::ValueParser::string()),
         )
     }
 
@@ -306,13 +306,12 @@ pub trait CommandExt: Sized {
     }
 
     fn arg_target_triple(self, target: &'static str) -> Self {
-        self.arg_target_triple_with_candidates(target, || Ok(get_target_triples()))
+        self.arg_target_triple_with_candidates(target)
     }
 
     fn arg_target_triple_with_candidates(
         self,
         target: &'static str,
-        target_completion: fn() -> Result<Vec<String>, clap::Error>,
     ) -> Self {
         let unsupported_short_arg = {
             let value_parser = UnknownArgumentValueParser::suggest_arg("--target");
@@ -326,7 +325,7 @@ pub trait CommandExt: Sized {
         self._arg(
             optional_multi_opt("target", "TRIPLE", target)
                 .help_heading(heading::COMPILATION_OPTIONS)
-                .value_parser(clap::builder::ValueParser::from(move |s: &'_ str| target_completion())),
+                .value_parser(clap::builder::ValueParser::string()),
         )
         ._arg(unsupported_short_arg)
     }
@@ -424,9 +423,7 @@ pub trait CommandExt: Sized {
     }
 
     fn arg_registry(self, help: &'static str) -> Self {
-        self._arg(opt("registry", help).value_name("REGISTRY").value_parser(
-            clap::builder::ValueParser::from(move |s: &'_ str| get_registry_candidates().map_err(|e| clap::Error::raw(clap::error::ErrorKind::ValueValidation, e.to_string()))),
-        ))
+        self._arg(opt("registry", help).value_name("REGISTRY").value_parser(clap::builder::ValueParser::string()))
     }
 
     fn arg_index(self, help: &'static str) -> Self {

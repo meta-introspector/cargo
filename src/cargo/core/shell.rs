@@ -406,6 +406,13 @@ impl Shell {
     /// Prints a message to stderr and translates ANSI escape code into console colors.
     pub fn print_ansi_stderr(&mut self, message: &[u8]) -> CargoResult<()> {
         if self.verbosity == Verbosity::Quiet {
+            let message_str = String::from_utf8_lossy(message);
+            let tag = "[SUPPRESSED_QUIET_ANSI_STDERR] ".as_bytes();
+            if message_str.to_lowercase().contains("err") {
+                self.err().write_all(tag)?;
+                self.err().write_all(message)?;
+                self.err().write_all(b"\n")?;
+            }
             return Ok(());
         }
         if self.needs_clear {
