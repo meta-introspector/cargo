@@ -6,7 +6,6 @@ use cargo::core::global_cache_tracker::GlobalCacheTracker;
 use cargo::ops::CleanContext;
 use cargo::ops::{self, CleanOptions};
 use cargo::util::print_available_packages;
-use clap_complete::ArgValueCandidates;
 use indexmap::IndexSet;
 use std::time::Duration;
 
@@ -17,7 +16,7 @@ pub fn cli() -> Command {
         .arg_silent_suggestion()
         .arg_package_spec_simple(
             "Package to clean artifacts for",
-            ArgValueCandidates::new(get_pkg_name_candidates),
+            || Ok(get_pkg_name_candidates()),
         )
         .arg(
             flag("workspace", "Clean artifacts of the workspace members")

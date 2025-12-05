@@ -23,7 +23,6 @@ use cargo_util_schemas::manifest::ProfileName;
 use cargo_util_schemas::manifest::RegistryName;
 use cargo_util_schemas::manifest::StringOrVec;
 use clap::builder::UnknownArgumentValueParser;
-use clap_complete::ArgValueCandidates;
 use home::cargo_home_with_cwd;
 use indexmap::IndexSet;
 use itertools::Itertools;
@@ -35,7 +34,7 @@ use std::path::PathBuf;
 
 pub use crate::core::compiler::UserIntent;
 pub use crate::{CliError, CliResult, GlobalContext};
-pub use clap::{Arg, ArgAction, ArgMatches, value_parser};
+pub use clap::{Arg, ArgAction, ArgMatches, value_parser, ValueHint};
 
 pub use clap::Command;
 
@@ -65,7 +64,7 @@ pub trait CommandExt: Sized {
             package,
             all,
             exclude,
-            ArgValueCandidates::new(get_ws_member_candidates),
+            || get_ws_member_candidates().map_err(|e| clap::Error::raw(clap::error::ErrorKind::ValueValidation, e.to_string())),
         )
         ._arg(
             flag("all", "Alias for --workspace (deprecated)")
@@ -80,8 +79,8 @@ pub trait CommandExt: Sized {
         self,
         package: &'static str,
         all: &'static str,
-        exclude: &'static str,
-        package_completion: ArgValueCandidates,
+        exclude_help: &'static str,
+        package_completion: fn() -> Result<Vec<String>, clap::Error>,
     ) -> Self {
         let unsupported_short_arg = {
             let value_parser = UnknownArgumentValueParser::suggest_arg("--exclude");
@@ -92,28 +91,31 @@ pub trait CommandExt: Sized {
                 .action(ArgAction::SetTrue)
                 .hide(true)
         };
-        self.arg_package_spec_simple(package, package_completion)
-            ._arg(flag("workspace", all).help_heading(heading::PACKAGE_SELECTION))
+        self._arg(flag("workspace", all).help_heading(heading::PACKAGE_SELECTION))
             ._arg(
-                multi_opt("exclude", "SPEC", exclude)
+                multi_opt("exclude", "SPEC", exclude_help)
                     .help_heading(heading::PACKAGE_SELECTION)
-                    .add(clap_complete::ArgValueCandidates::new(
-                        get_ws_member_candidates,
-                    )),
+                    .value_parser(clap::builder::ValueParser::from(move |s: &'_ str| get_ws_member_candidates().map_err(|e| clap::Error::raw(clap::error::ErrorKind::ValueValidation, e.to_string())))),
             )
             ._arg(unsupported_short_arg)
+            ._arg(
+                optional_multi_opt("package", "SPEC", package)
+                    .short('p')
+                    .help_heading(heading::PACKAGE_SELECTION)
+                    .value_parser(clap::builder::ValueParser::from(move |s: &'_ str| package_completion())),
+            )
     }
 
     fn arg_package_spec_simple(
         self,
         package: &'static str,
-        package_completion: ArgValueCandidates,
+        package_completion: fn() -> Result<Vec<String>, clap::Error>,
     ) -> Self {
         self._arg(
             optional_multi_opt("package", "SPEC", package)
                 .short('p')
                 .help_heading(heading::PACKAGE_SELECTION)
-                .add(package_completion),
+                .value_parser(clap::builder::ValueParser::from(move |s: &'_ str| package_completion())),
         )
     }
 
@@ -123,9 +125,7 @@ pub trait CommandExt: Sized {
                 .short('p')
                 .value_name("SPEC")
                 .help_heading(heading::PACKAGE_SELECTION)
-                .add(clap_complete::ArgValueCandidates::new(|| {
-                    get_ws_member_candidates()
-                })),
+                .value_parser(clap::builder::ValueParser::from(move |s: &'_ str| get_ws_member_candidates().map_err(|e| clap::Error::raw(clap::error::ErrorKind::ValueValidation, e.to_string())))),
         )
     }
 
@@ -162,7 +162,7 @@ pub trait CommandExt: Sized {
         supported_mode: &'static str,
     ) -> Self {
         let msg = format!(
-            "`--{default_mode}` is the default for `cargo {command}`; instead `--{supported_mode}` is supported"
+            "`--{{default_mode}}` is the default for `cargo {{command}}`; instead `--{{supported_mode}}` is supported"
         );
         let value_parser = UnknownArgumentValueParser::suggest(msg);
         self._arg(
@@ -191,17 +191,13 @@ pub trait CommandExt: Sized {
             ._arg(
                 optional_multi_opt("test", "NAME", test)
                     .help_heading(heading::TARGET_SELECTION)
-                    .add(clap_complete::ArgValueCandidates::new(|| {
-                        get_crate_candidates(TargetKind::Test).unwrap_or_default()
-                    })),
+                    .value_parser(clap::builder::ValueParser::from(move |s: &'_ str| get_crate_candidates(TargetKind::Test).map_err(|e| clap::Error::raw(clap::error::ErrorKind::ValueValidation, e.to_string())))),
             )
             ._arg(flag("benches", benches).help_heading(heading::TARGET_SELECTION))
             ._arg(
                 optional_multi_opt("bench", "NAME", bench)
                     .help_heading(heading::TARGET_SELECTION)
-                    .add(clap_complete::ArgValueCandidates::new(|| {
-                        get_crate_candidates(TargetKind::Bench).unwrap_or_default()
-                    })),
+                    .value_parser(clap::builder::ValueParser::from(move |s: &'_ str| get_crate_candidates(TargetKind::Bench).map_err(|e| clap::Error::raw(clap::error::ErrorKind::ValueValidation, e.to_string())))),
             )
             ._arg(flag("all-targets", all).help_heading(heading::TARGET_SELECTION))
     }
@@ -219,17 +215,13 @@ pub trait CommandExt: Sized {
             ._arg(
                 optional_multi_opt("bin", "NAME", bin)
                     .help_heading(heading::TARGET_SELECTION)
-                    .add(clap_complete::ArgValueCandidates::new(|| {
-                        get_crate_candidates(TargetKind::Bin).unwrap_or_default()
-                    })),
+                    .value_parser(clap::builder::ValueParser::from(move |s: &'_ str| get_crate_candidates(TargetKind::Bin).map_err(|e| clap::Error::raw(clap::error::ErrorKind::ValueValidation, e.to_string())))),
             )
             ._arg(flag("examples", examples).help_heading(heading::TARGET_SELECTION))
             ._arg(
                 optional_multi_opt("example", "NAME", example)
                     .help_heading(heading::TARGET_SELECTION)
-                    .add(clap_complete::ArgValueCandidates::new(|| {
-                        get_crate_candidates(TargetKind::ExampleBin).unwrap_or_default()
-                    })),
+                    .value_parser(clap::builder::ValueParser::from(move |s: &'_ str| get_crate_candidates(TargetKind::ExampleBin).map_err(|e| clap::Error::raw(clap::error::ErrorKind::ValueValidation, e.to_string())))),
             )
     }
 
@@ -243,17 +235,13 @@ pub trait CommandExt: Sized {
         self._arg(
             optional_multi_opt("bin", "NAME", bin)
                 .help_heading(heading::TARGET_SELECTION)
-                .add(clap_complete::ArgValueCandidates::new(|| {
-                    get_crate_candidates(TargetKind::Bin).unwrap_or_default()
-                })),
+                .value_parser(clap::builder::ValueParser::from(move |s: &'_ str| get_crate_candidates(TargetKind::Bin).map_err(|e| clap::Error::raw(clap::error::ErrorKind::ValueValidation, e.to_string())))),
         )
         ._arg(flag("bins", bins).help_heading(heading::TARGET_SELECTION))
         ._arg(
             optional_multi_opt("example", "NAME", example)
                 .help_heading(heading::TARGET_SELECTION)
-                .add(clap_complete::ArgValueCandidates::new(|| {
-                    get_crate_candidates(TargetKind::ExampleBin).unwrap_or_default()
-                })),
+                .value_parser(clap::builder::ValueParser::from(move |s: &'_ str| get_crate_candidates(TargetKind::ExampleBin).map_err(|e| clap::Error::raw(clap::error::ErrorKind::ValueValidation, e.to_string())))),
         )
         ._arg(flag("examples", examples).help_heading(heading::TARGET_SELECTION))
     }
@@ -262,16 +250,12 @@ pub trait CommandExt: Sized {
         self._arg(
             optional_multi_opt("bin", "NAME", bin)
                 .help_heading(heading::TARGET_SELECTION)
-                .add(clap_complete::ArgValueCandidates::new(|| {
-                    get_crate_candidates(TargetKind::Bin).unwrap_or_default()
-                })),
+                .value_parser(clap::builder::ValueParser::from(move |s: &'_ str| get_crate_candidates(TargetKind::Bin).map_err(|e| clap::Error::raw(clap::error::ErrorKind::ValueValidation, e.to_string())))),
         )
         ._arg(
             optional_multi_opt("example", "NAME", example)
                 .help_heading(heading::TARGET_SELECTION)
-                .add(clap_complete::ArgValueCandidates::new(|| {
-                    get_crate_candidates(TargetKind::ExampleBin).unwrap_or_default()
-                })),
+                .value_parser(clap::builder::ValueParser::from(move |s: &'_ str| get_crate_candidates(TargetKind::ExampleBin).map_err(|e| clap::Error::raw(clap::error::ErrorKind::ValueValidation, e.to_string())))),
         )
     }
 
@@ -284,9 +268,7 @@ pub trait CommandExt: Sized {
             )
             .short('F')
             .help_heading(heading::FEATURE_SELECTION)
-            .add(clap_complete::ArgValueCandidates::new(|| {
-                get_feature_candidates().unwrap_or_default()
-            })),
+            .value_parser(clap::builder::ValueParser::from(move |s: &'_ str| get_feature_candidates().map_err(|e| clap::Error::raw(clap::error::ErrorKind::ValueValidation, e.to_string())))),
         )
         ._arg(
             flag("all-features", "Activate all available features")
@@ -315,10 +297,7 @@ pub trait CommandExt: Sized {
             opt("profile", profile)
                 .value_name("PROFILE-NAME")
                 .help_heading(heading::COMPILATION_OPTIONS)
-                .add(clap_complete::ArgValueCandidates::new(|| {
-                    let candidates = get_profile_candidates();
-                    candidates
-                })),
+                .value_parser(clap::builder::ValueParser::from(move |s: &'_ str| Ok::<Vec<String>, clap::Error>(get_profile_candidates()))),
         )
     }
 
@@ -327,13 +306,13 @@ pub trait CommandExt: Sized {
     }
 
     fn arg_target_triple(self, target: &'static str) -> Self {
-        self.arg_target_triple_with_candidates(target, ArgValueCandidates::new(get_target_triples))
+        self.arg_target_triple_with_candidates(target, || Ok(get_target_triples()))
     }
 
     fn arg_target_triple_with_candidates(
         self,
         target: &'static str,
-        target_completion: ArgValueCandidates,
+        target_completion: fn() -> Result<Vec<String>, clap::Error>,
     ) -> Self {
         let unsupported_short_arg = {
             let value_parser = UnknownArgumentValueParser::suggest_arg("--target");
@@ -347,7 +326,7 @@ pub trait CommandExt: Sized {
         self._arg(
             optional_multi_opt("target", "TRIPLE", target)
                 .help_heading(heading::COMPILATION_OPTIONS)
-                .add(target_completion),
+                .value_parser(clap::builder::ValueParser::from(move |s: &'_ str| target_completion())),
         )
         ._arg(unsupported_short_arg)
     }
@@ -379,17 +358,8 @@ pub trait CommandExt: Sized {
             opt("manifest-path", "Path to Cargo.toml")
                 .value_name("PATH")
                 .help_heading(heading::MANIFEST_OPTIONS)
-                .add(clap_complete::engine::ArgValueCompleter::new(
-                    clap_complete::engine::PathCompleter::any().filter(|path: &Path| {
-                        if path.file_name() == Some(OsStr::new("Cargo.toml")) {
-                            return true;
-                        }
-                        if is_embedded(path) {
-                            return true;
-                        }
-                        false
-                    }),
-                )),
+                .value_parser(clap::builder::ValueParser::path_buf()) // Use clap's path_buf parser
+                .value_hint(clap::ValueHint::FilePath) // Suggest file paths
         )
     }
 
@@ -398,17 +368,8 @@ pub trait CommandExt: Sized {
             opt("lockfile-path", "Path to Cargo.lock (unstable)")
                 .value_name("PATH")
                 .help_heading(heading::MANIFEST_OPTIONS)
-                .add(clap_complete::engine::ArgValueCompleter::new(
-                    clap_complete::engine::PathCompleter::any().filter(|path: &Path| {
-                        let file_name = match path.file_name() {
-                            Some(name) => name,
-                            None => return false,
-                        };
-
-                        // allow `Cargo.lock` file
-                        file_name == OsStr::new("Cargo.lock")
-                    }),
-                )),
+                .value_parser(clap::builder::ValueParser::path_buf()) // Use clap's path_buf parser
+                .value_hint(clap::ValueHint::FilePath) // Suggest file paths
         )
     }
 
@@ -439,8 +400,8 @@ pub trait CommandExt: Sized {
         self._arg(
             opt(
                 "vcs",
-                "Initialize a new repository for the given version \
-                 control system, overriding \
+                "Initialize a new repository for the given version \\
+                 control system, overriding \\
                  a global configuration.",
             )
             .value_name("VCS")
@@ -463,11 +424,8 @@ pub trait CommandExt: Sized {
     }
 
     fn arg_registry(self, help: &'static str) -> Self {
-        self._arg(opt("registry", help).value_name("REGISTRY").add(
-            clap_complete::ArgValueCandidates::new(|| {
-                let candidates = get_registry_candidates();
-                candidates.unwrap_or_default()
-            }),
+        self._arg(opt("registry", help).value_name("REGISTRY").value_parser(
+            clap::builder::ValueParser::from(move |s: &'_ str| get_registry_candidates().map_err(|e| clap::Error::raw(clap::error::ErrorKind::ValueValidation, e.to_string()))),
         ))
     }
 
@@ -701,9 +659,7 @@ pub trait ArgMatchesExt {
                 "rustc --print target-list"
             };
             bail!(
-                "\"--target\" takes a target architecture as an argument.
-
-Run `{cmd}` to see possible targets."
+                "\"--target\" takes a target architecture as an argument.\n\nRun `{cmd}` to see possible targets."
             );
         }
         Ok(self._values_of("target"))
@@ -909,9 +865,8 @@ Run `{cmd}` to see possible targets."
             // As for cargo 0.50.0, this won't occur but if someone sneaks in
             // we can still provide this informative message for them.
             anyhow::bail!(
-                "\"--package <SPEC>\" requires a SPEC format value, \
-                which can be any package ID specifier in the dependency graph.\n\
-                Run `cargo help pkgid` for more information about SPEC format."
+                "\"--package <SPEC>\" requires a SPEC format value, \\
+                which can be any package ID specifier in the dependency graph.\n\n                Run `cargo help pkgid` for more information about SPEC format."
             )
         }
 
@@ -1130,9 +1085,7 @@ pub fn lockfile_path(
     lockfile_path: Option<&Path>,
     gctx: &GlobalContext,
 ) -> CargoResult<Option<PathBuf>> {
-    let Some(lockfile_path) = lockfile_path else {
-        return Ok(None);
-    };
+    let Some(lockfile_path) = lockfile_path else { return Ok(None); };
 
     gctx.cli_unstable()
         .fail_if_stable_opt("--lockfile-path", 14421)?;
@@ -1154,7 +1107,7 @@ pub fn lockfile_path(
     return Ok(Some(path));
 }
 
-pub fn get_registry_candidates() -> CargoResult<Vec<clap_complete::CompletionCandidate>> {
+pub fn get_registry_candidates() -> CargoResult<Vec<String>> {
     let gctx = new_gctx_for_completions()?;
 
     if let Ok(Some(registries)) =
@@ -1162,14 +1115,14 @@ pub fn get_registry_candidates() -> CargoResult<Vec<clap_complete::CompletionCan
     {
         Ok(registries
             .keys()
-            .map(|name| clap_complete::CompletionCandidate::new(name.to_owned()))
+            .map(|name| name.to_owned()) // Return String directly
             .collect())
     } else {
         Ok(vec![])
     }
 }
 
-fn get_profile_candidates() -> Vec<clap_complete::CompletionCandidate> {
+fn get_profile_candidates() -> Vec<String> {
     match get_workspace_profile_candidates() {
         Ok(candidates) if !candidates.is_empty() => candidates,
         // fallback to default profile candidates
@@ -1177,46 +1130,30 @@ fn get_profile_candidates() -> Vec<clap_complete::CompletionCandidate> {
     }
 }
 
-fn get_workspace_profile_candidates() -> CargoResult<Vec<clap_complete::CompletionCandidate>> {
+fn get_workspace_profile_candidates() -> CargoResult<Vec<String>> {
     let gctx = new_gctx_for_completions()?;
     let ws = Workspace::new(&find_root_manifest_for_wd(gctx.cwd())?, &gctx)?;
     let profiles = Profiles::new(&ws, "dev".into())?;
 
     let mut candidates = Vec::new();
     for name in profiles.profile_names() {
-        let Ok(profile_instance) = Profiles::new(&ws, name) else {
-            continue;
-        };
-        let base_profile = profile_instance.base_profile();
-
-        let mut description = String::from(if base_profile.opt_level.as_str() == "0" {
-            "unoptimized"
-        } else {
-            "optimized"
-        });
-
-        if base_profile.debuginfo.is_turned_on() {
-            description.push_str(" + debuginfo");
-        }
-
-        candidates
-            .push(clap_complete::CompletionCandidate::new(&name).help(Some(description.into())));
+        // Just add the name as a String
+        candidates.push(name.to_owned().to_string());
     }
 
     Ok(candidates)
 }
 
-fn default_profile_candidates() -> Vec<clap_complete::CompletionCandidate> {
+fn default_profile_candidates() -> Vec<String> {
     vec![
-        clap_complete::CompletionCandidate::new("dev").help(Some("unoptimized + debuginfo".into())),
-        clap_complete::CompletionCandidate::new("release").help(Some("optimized".into())),
-        clap_complete::CompletionCandidate::new("test")
-            .help(Some("unoptimized + debuginfo".into())),
-        clap_complete::CompletionCandidate::new("bench").help(Some("optimized".into())),
+        "dev".to_owned(),
+        "release".to_owned(),
+        "test".to_owned(),
+        "bench".to_owned(),
     ]
 }
 
-fn get_feature_candidates() -> CargoResult<Vec<clap_complete::CompletionCandidate>> {
+fn get_feature_candidates() -> CargoResult<Vec<String>> {
     let gctx = new_gctx_for_completions()?;
 
     let ws = Workspace::new(&find_root_manifest_for_wd(gctx.cwd())?, &gctx)?;
@@ -1224,27 +1161,16 @@ fn get_feature_candidates() -> CargoResult<Vec<clap_complete::CompletionCandidat
 
     // Process all packages in the workspace
     for package in ws.members() {
-        let package_name = package.name();
-
         // Add direct features with package info
         for feature_name in package.summary().features().keys() {
-            let order = if ws.current_opt().map(|p| p.name()) == Some(package_name) {
-                0
-            } else {
-                1
-            };
-            feature_candidates.push(
-                clap_complete::CompletionCandidate::new(feature_name)
-                    .display_order(Some(order))
-                    .help(Some(format!("from {}", package_name).into())),
-            );
+            feature_candidates.push(feature_name.to_owned().to_string());
         }
     }
 
     Ok(feature_candidates)
 }
 
-fn get_crate_candidates(kind: TargetKind) -> CargoResult<Vec<clap_complete::CompletionCandidate>> {
+fn get_crate_candidates(kind: TargetKind) -> CargoResult<Vec<String>> {
     let gctx = new_gctx_for_completions()?;
 
     let ws = Workspace::new(&find_root_manifest_for_wd(gctx.cwd())?, &gctx)?;
@@ -1253,22 +1179,13 @@ fn get_crate_candidates(kind: TargetKind) -> CargoResult<Vec<clap_complete::Comp
         .members()
         .flat_map(|pkg| pkg.targets().into_iter().cloned().map(|t| (pkg.name(), t)))
         .filter(|(_, target)| *target.kind() == kind)
-        .map(|(pkg_name, target)| {
-            let order = if ws.current_opt().map(|p| p.name()) == Some(pkg_name) {
-                0
-            } else {
-                1
-            };
-            clap_complete::CompletionCandidate::new(target.name())
-                .display_order(Some(order))
-                .help(Some(format!("from {}", pkg_name).into()))
-        })
+        .map(|(_pkg_name, target)| target.name().to_owned())
         .collect::<Vec<_>>();
 
     Ok(targets)
 }
 
-fn get_target_triples() -> Vec<clap_complete::CompletionCandidate> {
+fn get_target_triples() -> Vec<String> {
     let mut candidates = Vec::new();
 
     if let Ok(targets) = get_target_triples_from_rustup() {
@@ -1284,23 +1201,21 @@ fn get_target_triples() -> Vec<clap_complete::CompletionCandidate> {
     // Allow tab-completion for `host-tuple` as the desired target.
     candidates.insert(
         0,
-        clap_complete::CompletionCandidate::new("host-tuple").help(Some(
-            concat!("alias for: ", env!("RUST_HOST_TARGET")).into(),
-        )),
+        "host-tuple".to_string(),
     );
 
     candidates
 }
 
-pub fn get_target_triples_with_all() -> Vec<clap_complete::CompletionCandidate> {
+pub fn get_target_triples_with_all() -> Vec<String> {
     let mut candidates = vec![
-        clap_complete::CompletionCandidate::new("all").help(Some("Include all targets".into())),
+        "all".to_string(),
     ];
     candidates.extend(get_target_triples());
     candidates
 }
 
-fn get_target_triples_from_rustup() -> CargoResult<Vec<clap_complete::CompletionCandidate>> {
+fn get_target_triples_from_rustup() -> CargoResult<Vec<String>> {
     let output = std::process::Command::new("rustup")
         .arg("target")
         .arg("list")
@@ -1317,14 +1232,14 @@ fn get_target_triples_from_rustup() -> CargoResult<Vec<clap_complete::Completion
         .map(|line| {
             let target = line.split_once(' ');
             match target {
-                None => clap_complete::CompletionCandidate::new(line.to_owned()).hide(true),
-                Some((target, _installed)) => clap_complete::CompletionCandidate::new(target),
+                None => line.to_owned(),
+                Some((target, _installed)) => target.to_owned(),
             }
         })
         .collect())
 }
 
-fn get_target_triples_from_rustc() -> CargoResult<Vec<clap_complete::CompletionCandidate>> {
+fn get_target_triples_from_rustc() -> CargoResult<Vec<String>> {
     let gctx = new_gctx_for_completions()?;
 
     let ws = Workspace::new(&find_root_manifest_for_wd(gctx.cwd())?, &gctx);
@@ -1336,34 +1251,20 @@ fn get_target_triples_from_rustc() -> CargoResult<Vec<clap_complete::CompletionC
 
     Ok(stdout
         .lines()
-        .map(|line| clap_complete::CompletionCandidate::new(line.to_owned()))
+        .map(|line| line.to_owned())
         .collect())
 }
 
-pub fn get_ws_member_candidates() -> Vec<clap_complete::CompletionCandidate> {
-    get_ws_member_packages()
-        .unwrap_or_default()
-        .into_iter()
-        .map(|pkg| {
-            clap_complete::CompletionCandidate::new(pkg.name().as_str()).help(
-                pkg.manifest()
-                    .metadata()
-                    .description
-                    .to_owned()
-                    .map(From::from),
-            )
-        })
-        .collect::<Vec<_>>()
-}
-
-fn get_ws_member_packages() -> CargoResult<Vec<Package>> {
+pub fn get_ws_member_candidates() -> CargoResult<Vec<String>> {
     let gctx = new_gctx_for_completions()?;
     let ws = Workspace::new(&find_root_manifest_for_wd(gctx.cwd())?, &gctx)?;
-    let packages = ws.members().map(Clone::clone).collect::<Vec<_>>();
+    let packages = ws.members().map(|pkg| pkg.name().to_string()).collect::<Vec<_>>();
     Ok(packages)
 }
 
-pub fn get_pkg_id_spec_candidates() -> Vec<clap_complete::CompletionCandidate> {
+
+
+pub fn get_pkg_id_spec_candidates() -> Vec<String> {
     let mut candidates = vec![];
 
     let package_map = HashMap::<&str, Vec<Package>>::new();
@@ -1381,16 +1282,7 @@ pub fn get_pkg_id_spec_candidates() -> Vec<clap_complete::CompletionCandidate> {
     let unique_name_candidates = package_map
         .iter()
         .filter(|(_name, packages)| packages.len() == 1)
-        .map(|(name, packages)| {
-            clap_complete::CompletionCandidate::new(name.to_string()).help(
-                packages[0]
-                    .manifest()
-                    .metadata()
-                    .description
-                    .to_owned()
-                    .map(From::from),
-            )
-        })
+        .map(|(name, _packages)| name.to_string())
         .collect::<Vec<_>>();
 
     let duplicate_name_pairs = package_map
@@ -1409,36 +1301,9 @@ pub fn get_pkg_id_spec_candidates() -> Vec<clap_complete::CompletionCandidate> {
         for package in packages {
             if let Some(&count) = version_count.get(package.version()) {
                 if count == 1 {
-                    duplicate_name_candidates.push(
-                        clap_complete::CompletionCandidate::new(format!(
-                            "{}@{}",
-                            name,
-                            package.version()
-                        ))
-                        .help(
-                            package
-                                .manifest()
-                                .metadata()
-                                .description
-                                .to_owned()
-                                .map(From::from),
-                        ),
-                    );
+                    duplicate_name_candidates.push(format!("{}@{}", name, package.version()));
                 } else {
-                    duplicate_name_candidates.push(
-                        clap_complete::CompletionCandidate::new(format!(
-                            "{}",
-                            package.package_id().to_spec()
-                        ))
-                        .help(
-                            package
-                                .manifest()
-                                .metadata()
-                                .description
-                                .to_owned()
-                                .map(From::from),
-                        ),
-                    )
+                    duplicate_name_candidates.push(package.package_id().to_spec().to_string())
                 }
             }
         }
@@ -1450,7 +1315,7 @@ pub fn get_pkg_id_spec_candidates() -> Vec<clap_complete::CompletionCandidate> {
     candidates
 }
 
-pub fn get_pkg_name_candidates() -> Vec<clap_complete::CompletionCandidate> {
+pub fn get_pkg_name_candidates() -> Vec<String> {
     let packages: BTreeMap<_, _> = get_packages()
         .unwrap_or_default()
         .into_iter()
@@ -1464,9 +1329,7 @@ pub fn get_pkg_name_candidates() -> Vec<clap_complete::CompletionCandidate> {
 
     packages
         .into_iter()
-        .map(|(name, description)| {
-            clap_complete::CompletionCandidate::new(name.as_str()).help(description.map(From::from))
-        })
+        .map(|(name, _description)| name.as_str().to_owned())
         .collect()
 }
 
@@ -1503,7 +1366,7 @@ fn get_packages() -> CargoResult<Vec<Package>> {
     Ok(packages)
 }
 
-pub fn get_direct_dependencies_pkg_name_candidates() -> Vec<clap_complete::CompletionCandidate> {
+pub fn get_direct_dependencies_pkg_name_candidates() -> Vec<String> {
     let (current_package_deps, all_package_deps) = match get_dependencies_from_metadata() {
         Ok(v) => v,
         Err(_) => return Vec::new(),
@@ -1524,7 +1387,7 @@ pub fn get_direct_dependencies_pkg_name_candidates() -> Vec<clap_complete::Compl
 
     package_names_set
         .into_iter()
-        .map(|name| name.into())
+        .map(|name| name.to_string())
         .collect_vec()
 }
 

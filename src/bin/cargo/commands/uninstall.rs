@@ -1,8 +1,6 @@
 use crate::command_prelude::*;
 
 use cargo::{CargoResult, core::PackageId, ops};
-use clap_complete::ArgValueCandidates;
-
 use std::collections::BTreeSet;
 
 pub fn cli() -> Command {
@@ -12,7 +10,7 @@ pub fn cli() -> Command {
             Arg::new("spec")
                 .value_name("SPEC")
                 .num_args(0..)
-                .add::<clap_complete::ArgValueCandidates>(clap_complete::ArgValueCandidates::new(
+                .add(clap_complete::ArgValueCandidates::new(
                     || get_installed_crates(),
                 )),
         )
@@ -20,7 +18,7 @@ pub fn cli() -> Command {
         .arg_silent_suggestion()
         .arg_package_spec_simple(
             "Package to uninstall",
-            ArgValueCandidates::new(get_installed_package_candidates),
+            || Ok(get_installed_package_candidates().into_iter().map(|c| c.get_value().to_string_lossy().into_owned()).collect()),
         )
         .arg(
             multi_opt("bin", "NAME", "Only uninstall the binary NAME")

@@ -614,7 +614,7 @@ impl<'gctx> RegistrySource<'gctx> {
                         .deferred_global_last_use()?
                         .mark_registry_src_used(global_cache_tracker::RegistrySrc {
                             encoded_registry_name: self.name,
-                            package_dir: package_dir.into(),
+                            name: package_dir.into(),
                             size: None,
                         });
                     return Ok(unpack_dir.to_path_buf());
@@ -653,8 +653,8 @@ impl<'gctx> RegistrySource<'gctx> {
             .deferred_global_last_use()?
             .mark_registry_src_used(global_cache_tracker::RegistrySrc {
                 encoded_registry_name: self.name,
-                package_dir: package_dir.into(),
-                size: Some(bytes_written),
+                name: package_dir.into(),
+                size: Some(bytes_written.try_into().unwrap()),
             });
 
         Ok(unpack_dir.to_path_buf())

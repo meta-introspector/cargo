@@ -175,6 +175,11 @@ pub struct RegistrySrc {
     /// A unique name of the registry source.
     pub encoded_registry_name: InternedString,
     /// The directory name of the extracted source, like `foo-1.2.3`.
+    pub name: InternedString,
+    /// The size of the extracted source.
+    ///
+    /// This can be None when the size is unknown. This can happen for older
+    /// versions of Cargo that did not track size.
     pub size: Option<i64>,
 }
 
@@ -453,7 +458,7 @@ impl GlobalCacheTracker {
                 let timestamp = row.get_unwrap(3);
                 let kind = RegistrySrc {
                     encoded_registry_name,
-                    package_dir,
+                    name: package_dir,
                     size,
                 };
                 Ok((kind, timestamp))
@@ -512,7 +517,7 @@ impl GlobalCacheTracker {
         let last_auto_gc: Timestamp =
             self.conn
                 .query_row("SELECT last_auto_gc FROM global_data", [], |row| row.get(0))?;
-        let should_run = last_auto_gc + frequency.as_secs() < now();
+        let should_run = last_auto_gc + (frequency.as_secs() as i64) < now();
         trace!(target: "gc",
             "last auto gc was {}, {}",
             last_auto_gc,
@@ -568,11 +573,11 @@ impl GlobalCacheTracker {
             .context("failed to sync tracking database")?
         }
         if let Some(max_age) = gc_opts.max_index_age {
-            let max_age = now - max_age.as_secs();
+            let max_age = now - (max_age.as_secs() as i64);
             Self::get_registry_index_to_clean(&tx, max_age, &base, &mut delete_paths)?;
         }
         if let Some(max_age) = gc_opts.max_src_age {
-            let max_age = now - max_age.as_secs();
+            let max_age = now - (max_age.as_secs() as i64);
             Self::get_registry_items_to_clean_age(
                 &tx,
                 max_age,
@@ -582,7 +587,7 @@ impl GlobalCacheTracker {
             )?;
         }
         if let Some(max_age) = gc_opts.max_crate_age {
-            let max_age = now - max_age.as_secs();
+            let max_age = now - (max_age.as_secs() as i64);
             Self::get_registry_items_to_clean_age(
                 &tx,
                 max_age,
@@ -592,11 +597,11 @@ impl GlobalCacheTracker {
             )?;
         }
         if let Some(max_age) = gc_opts.max_git_db_age {
-            let max_age = now - max_age.as_secs();
+            let max_age = now - (max_age.as_secs() as i64);
             Self::get_git_db_items_to_clean(&tx, max_age, &base, &mut delete_paths)?;
         }
         if let Some(max_age) = gc_opts.max_git_co_age {
-            let max_age = now - max_age.as_secs();
+            let max_age = now - (max_age.as_secs() as i64);
             Self::get_git_co_items_to_clean(&tx, max_age, &base.git_co, &mut delete_paths)?;
         }
         // Size collection must happen after date collection so that dates
@@ -615,7 +620,7 @@ impl GlobalCacheTracker {
         if let Some(max_size) = gc_opts.max_crate_size {
             Self::get_registry_items_to_clean_size(
                 &tx,
-                max_size,
+                max_size as i64,
                 REGISTRY_CRATE_TABLE,
                 &base.crate_dir,
                 &mut delete_paths,
@@ -624,17 +629,17 @@ impl GlobalCacheTracker {
         if let Some(max_size) = gc_opts.max_src_size {
             Self::get_registry_items_to_clean_size(
                 &tx,
-                max_size,
+                max_size as i64,
                 REGISTRY_SRC_TABLE,
                 &base.src,
                 &mut delete_paths,
             )?;
         }
         if let Some(max_size) = gc_opts.max_git_size {
-            Self::get_git_items_to_clean_size(&tx, max_size, &base, &mut delete_paths)?;
+            Self::get_git_items_to_clean_size(&tx, max_size as i64, &base, &mut delete_paths)?;
         }
         if let Some(max_size) = gc_opts.max_download_size {
-            Self::get_registry_items_to_clean_size_both(&tx, max_size, &base, &mut delete_paths)?;
+            Self::get_registry_items_to_clean_size_both(&tx, max_size as i64, &base, &mut delete_paths)?;
         }
 
         clean_ctx.remove_paths(&delete_paths)?;
@@ -1681,7 +1686,7 @@ impl DeferredGlobalLastUse {
             )?;
             stmt.execute(params![
                 registry_id,
-                registry_src.package_dir,
+                registry_src.name,
                 registry_src.size,
                 timestamp,
                 timestamp - UPDATE_RESOLUTION

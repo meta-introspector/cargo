@@ -64,20 +64,24 @@ impl UnitTestError {
 ///
 /// On error, the returned [`CliError`] will have the appropriate process exit
 /// code that Cargo should use.
-pub fn run_tests(ws: &Workspace<'_>, options: &TestOptions, test_args: &[&str]) -> CliResult {
-    let compilation = compile_tests(ws, options)?;
+use crate::core::compiler::UserIntent;
+use crate::ops::CompileOptions;
 
-    if options.no_run {
-        if !options.compile_opts.build_config.emit_json() {
-            display_no_run_information(ws, test_args, &compilation, "unittests")?;
-        }
-        return Ok(());
-    }
-    let mut errors = run_unit_tests(ws, options, test_args, &compilation, TestKind::Test)?;
+pub fn parse_test_args(
+    _gctx: &GlobalContext,
+    _args: &[&str],
+    _rust_root: &PathBuf,
+) -> CargoResult<TestOptions> {
+    // TODO: Implement parsing for TestOptions
+    // This will involve creating a clap Command for 'cargo test'
+    // and mapping its arguments to TestOptions fields.
 
-    let doctest_errors = run_doc_tests(ws, options, test_args, &compilation)?;
-    errors.extend(doctest_errors);
-    no_fail_fast_err(ws, &options.compile_opts, &errors)
+    // For now, return a basic TestOptions
+    Ok(TestOptions {
+        compile_opts: CompileOptions::new(_gctx, UserIntent::Test)?,
+        no_run: false,
+        no_fail_fast: false,
+    })
 }
 
 /// Compiles and runs benchmarks.
@@ -99,6 +103,29 @@ pub fn run_benches(ws: &Workspace<'_>, options: &TestOptions, args: &[&str]) -> 
 
     let errors = run_unit_tests(ws, options, &args, &compilation, TestKind::Bench)?;
     no_fail_fast_err(ws, &options.compile_opts, &errors)
+}
+
+/// Compiles and runs tests.
+///
+/// On error, the returned [`CliError`] will have the appropriate process exit
+/// code that Cargo should use.
+pub fn run_tests(ws: &Workspace<'_>, options: &TestOptions, args: &[&str]) -> CliResult {
+    let compilation = compile_tests(ws, options)?;
+
+    if options.no_run {
+        if !options.compile_opts.build_config.emit_json() {
+            display_no_run_information(ws, args, &compilation, "tests")?;
+        }
+        return Ok(());
+    }
+
+    let errors = run_unit_tests(ws, options, args, &compilation, TestKind::Test)?;
+    let doc_errors = run_doc_tests(ws, options, args, &compilation)?;
+
+    let mut all_errors = errors;
+    all_errors.extend(doc_errors);
+
+    no_fail_fast_err(ws, &options.compile_opts, &all_errors)
 }
 
 fn compile_tests<'a>(ws: &Workspace<'a>, options: &TestOptions) -> CargoResult<Compilation<'a>> {

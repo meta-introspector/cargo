@@ -57,7 +57,7 @@ pub(super) fn download(
                 global_cache_tracker::RegistryCrate {
                     encoded_registry_name,
                     crate_filename: pkg.tarball_name().into(),
-                    size: meta.len(),
+                    size: meta.len() as i64,
                 },
             );
             return Ok(MaybeLock::Ready(dst));
@@ -124,7 +124,7 @@ pub(super) fn finish_download(
         global_cache_tracker::RegistryCrate {
             encoded_registry_name,
             crate_filename: pkg.tarball_name().into(),
-            size: data.len() as u64,
+            size: data.len() as i64,
         },
     );
 

@@ -2,6 +2,7 @@ use cargo::sources::CRATES_IO_REGISTRY;
 use cargo::util::print_available_packages;
 use indexmap::IndexMap;
 use indexmap::IndexSet;
+use clap_complete::CompletionCandidate;
 
 use cargo::CargoResult;
 use cargo::core::FeatureValue;
@@ -150,7 +151,7 @@ This is the catch all, handling hashes to named references in remote repositorie
                 .help("Package registry for this dependency")
                 .add(clap_complete::ArgValueCandidates::new(|| {
                     let candidates = get_registry_candidates();
-                    candidates.unwrap_or_default()
+                    candidates.unwrap_or_default().into_iter().map(CompletionCandidate::new).collect()
                 })),
         ])
         .next_help_heading("Section")

@@ -3,6 +3,7 @@ use crate::command_prelude::*;
 use anyhow::anyhow;
 use cargo::ops::{self, UpdateOptions};
 use cargo::util::print_available_packages;
+use clap_complete::CompletionCandidate;
 
 pub fn cli() -> Command {
     subcommand("update")
@@ -14,9 +15,9 @@ pub fn cli() -> Command {
             .help_heading(heading::PACKAGE_SELECTION)
             .group("package-group")
             .help("Package to update")
-            .add(clap_complete::ArgValueCandidates::new(
-                get_pkg_id_spec_candidates,
-            ))])
+            .add(clap_complete::ArgValueCandidates::new(|| {
+                get_pkg_id_spec_candidates().into_iter().map(CompletionCandidate::new).collect()
+            }))])
         .arg(
             optional_multi_opt("package", "SPEC", "Package to update")
                 .short('p')

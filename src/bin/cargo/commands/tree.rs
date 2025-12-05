@@ -7,7 +7,7 @@ use cargo::ops::Packages;
 use cargo::ops::tree::{self, DisplayDepth, EdgeKind};
 use cargo::util::CargoResult;
 use cargo::util::print_available_packages;
-use clap_complete::ArgValueCandidates;
+use clap_complete::CompletionCandidate;
 use std::collections::HashSet;
 use std::str::FromStr;
 
@@ -45,9 +45,9 @@ pub fn cli() -> Command {
                 "Invert the tree direction and focus on the given package",
             )
             .short('i')
-            .add(clap_complete::ArgValueCandidates::new(
-                get_pkg_id_spec_candidates,
-            )),
+            .add(clap_complete::ArgValueCandidates::new(|| {
+                get_pkg_id_spec_candidates().into_iter().map(CompletionCandidate::new).collect()
+            })),
         )
         .arg(
             multi_opt(
@@ -55,9 +55,9 @@ pub fn cli() -> Command {
                 "SPEC",
                 "Prune the given package from the display of the dependency tree",
             )
-            .add(clap_complete::ArgValueCandidates::new(
-                get_pkg_id_spec_candidates,
-            )),
+            .add(clap_complete::ArgValueCandidates::new(|| {
+                get_pkg_id_spec_candidates().into_iter().map(CompletionCandidate::new).collect()
+            })),
         )
         .arg(opt("depth", "Maximum display depth of the dependency tree").value_name("DEPTH"))
         .arg(flag("no-indent", "Deprecated, use --prefix=none instead").hide(true))
@@ -104,14 +104,14 @@ pub fn cli() -> Command {
             "Package to be used as the root of the tree",
             "Display the tree for all packages in the workspace",
             "Exclude specific workspace members",
-            ArgValueCandidates::new(get_pkg_id_spec_candidates),
+            || Ok(get_pkg_id_spec_candidates()),
         )
         .arg_features()
         .arg(flag("all-targets", "Deprecated, use --target=all instead").hide(true))
         .arg_target_triple_with_candidates(
             "Filter dependencies matching the given target-triple (default host platform). \
             Pass `all` to include all targets.",
-            ArgValueCandidates::new(get_target_triples_with_all),
+            || Ok(get_target_triples_with_all()),
         )
         .arg_manifest_path()
         .arg_lockfile_path()

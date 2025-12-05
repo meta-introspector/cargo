@@ -1,0 +1,3540 @@
+commit 619c0abe655acdc419b9818a9264b7f4c55fc2b7 (HEAD -> refs/heads/clap-v3.2.25-nixify)
+Author: mike dupont <mike.dupont@introspector.local>
+Date:   Mon Dec 1 12:47:23 2025 -0500
+
+    feat: Add/update Nix flake for submodule (CRQ-016)
+    
+    feat: Add/update Nix flake for submodule (CRQ-016)
+    
+    feat: Add/update Nix flake for submodule (CRQ-016)
+    
+    fix: Remove workspace definitions from Cargo.toml in cargo submodule to resolve nested workspace error.
+    
+    feat: Add/update Nix flake for submodule (CRQ-016)
+    
+    feat: Add/update Nix flake for submodule (CRQ-016)
+    
+    feat: Add/update Nix flake for submodule (CRQ-016)
+    
+    fix: Remove workspace definitions from Cargo.toml in cargo submodule to resolve nested workspace error.
+    
+    ijunk
+    
+    feat: Add/update Nix flake for submodule (CRQ-016)
+    
+    feat: Add/update Nix flake for submodule (CRQ-016)
+    
+    feat: Add/update Nix flake for submodule (CRQ-016)
+    
+    fix: Remove workspace definitions from Cargo.toml in cargo submodule to resolve nested workspace error.
+    
+    ijunk
+    
+    remove
+
+diff --git a/Cargo.toml b/Cargo.toml
+index de271fd0f..19c67c077 100644
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -1,21 +1,20 @@
+-[workspace]
+-resolver = "2"
+-members = [
+-  "crates/*",
+-  "credential/*",
+-  "benches/benchsuite",
+-  "benches/capture",
+-]
+-exclude = [
+-  "target/", # exclude bench testing
+-]
++# [workspace]
++# resolver = "2"
++# members = [
++#   "crates/*",
++#   "credential/*",
++#   "benches/benchsuite",
++#   "benches/capture",
++# ]
++# exclude = [
++#   "target/", # exclude bench testing
++# [workspace.package]
++# rust-version = "1.89"  # MSRV:3
++# edition = "2024"
++# license = "MIT OR Apache-2.0"
++# homepage = "https://github.com/rust-lang/cargo"
++# repository = "https://github.com/rust-lang/cargo"
+ 
+-[workspace.package]
+-rust-version = "1.89"  # MSRV:3
+-edition = "2024"
+-license = "MIT OR Apache-2.0"
+-homepage = "https://github.com/rust-lang/cargo"
+-repository = "https://github.com/rust-lang/cargo"
+ 
+ [workspace.dependencies]
+ annotate-snippets = { version = "0.12.9", features = ["simd"] }
+@@ -137,10 +136,10 @@ self_named_module_files = "warn"
+ 
+ [package]
+ name = "cargo"
+-version = "0.94.0"
++version.workspace = true
+ edition.workspace = true
+ license.workspace = true
+-rust-version = "1.91"  # MSRV:1
++rust-version.workspace = true # MSRV:1
+ homepage = "https://doc.rust-lang.org/cargo/index.html"
+ repository.workspace = true
+ documentation = "https://docs.rs/cargo"
+@@ -164,6 +163,7 @@ cargo-platform.workspace = true
+ cargo-util-schemas.workspace = true
+ cargo-util.workspace = true
+ clap = { workspace = true, features = ["wrap_help"] }
++#clap_complete = { workspace = true, features = ["unstable-dynamic"] }
+ clap_complete.workspace = true
+ color-print.workspace = true
+ crates-io.workspace = true
+@@ -171,7 +171,7 @@ curl = { workspace = true, features = ["http2"] }
+ curl-sys.workspace = true
+ filetime.workspace = true
+ flate2.workspace = true
+-git2.workspace = true
++git2 = { workspace = true, features = ["cred"] }
+ git2-curl.workspace = true
+ gix.workspace = true
+ glob.workspace = true
+@@ -258,7 +258,9 @@ cargo-test-support.workspace = true
+ gix = { workspace = true, features = ["revision"] }
+ # When building Cargo for tests, a safety-measure in `gix` needs to be disabled
+ # to allow sending credentials over HTTP connections.
+-gix-transport = { version = "0.49.1", features = ["http-client-insecure-credentials"] }
++gix-transport = { workspace = true, features = ["http-client-insecure-credentials"] }
++#gix-transport = { version = "0.49.1", features = ["http-client-insecure-credentials"] }
++
+ same-file.workspace = true
+ snapbox.workspace = true
+ 
+@@ -282,8 +284,16 @@ vendored-libgit2 = ["libgit2-sys/vendored"]
+ all-static = ['vendored-openssl', 'curl/static-curl', 'curl/force-system-lib-on-osx', 'vendored-libgit2']
+ # Exactly one of 'http-transport-curl' or 'http-transport-reqwest' must be enabled
+ # when using Cargo as a library. By default, it is 'http-transport-curl'.
+-http-transport-curl = ["gix/blocking-http-transport-curl"]
+-http-transport-reqwest = ["gix/blocking-http-transport-reqwest"]
++
++http-transport-curl = [
++"gix/blocking-http-transport-curl"
++]
++http-transport-reqwest = [
++"gix/blocking-http-transport-reqwest"
++]
++
++#http-transport-curl = ["gix/blocking-http-transport-curl"]
++#http-transport-reqwest = ["gix/blocking-http-transport-reqwest"]
+ 
+ [lints]
+ workspace = true
+diff --git a/crates/cargo-test-support/Cargo.toml b/crates/cargo-test-support/Cargo.toml
+index 89d13913f..d4d28d5e4 100644
+--- a/crates/cargo-test-support/Cargo.toml
++++ b/crates/cargo-test-support/Cargo.toml
+@@ -24,7 +24,7 @@ pasetors.workspace = true
+ regex.workspace = true
+ serde = { workspace = true, features = ["derive"] }
+ serde_json.workspace = true
+-snapbox.workspace = true
++snapbox = { workspace = true, features = ["dir", "json", "regex"] }
+ tar.workspace = true
+ time.workspace = true
+ toml = { workspace = true, features = ["display", "serde"] }
+diff --git a/crates/cargo-util-schemas/Cargo.toml b/crates/cargo-util-schemas/Cargo.toml
+index 44fbf7a18..d4e949b70 100644
+--- a/crates/cargo-util-schemas/Cargo.toml
++++ b/crates/cargo-util-schemas/Cargo.toml
+@@ -10,7 +10,7 @@ description = "Deserialization schemas for Cargo"
+ 
+ [dependencies]
+ schemars = { workspace = true, features = ["preserve_order", "semver1"], optional = true }
+-semver.workspace = true
++semver = { workspace = true, features = ["serde"] }
+ serde = { workspace = true, features = ["derive"] }
+ serde_json = { workspace = true, optional = true }
+ serde-untagged.workspace = true
+diff --git a/src/cargo/core/global_cache_tracker.rs b/src/cargo/core/global_cache_tracker.rs
+index 619836816..e95907970 100644
+--- a/src/cargo/core/global_cache_tracker.rs
++++ b/src/cargo/core/global_cache_tracker.rs
+@@ -144,12 +144,12 @@ const GIT_CO_TABLE: &str = "git_checkout";
+ /// As an optimization timestamps are not updated unless they are older than
+ /// the given number of seconds. This helps reduce the amount of disk I/O when
+ /// running cargo multiple times within a short window.
+-const UPDATE_RESOLUTION: u64 = 60 * 5;
++const UPDATE_RESOLUTION: i64 = 60 * 5;
+ 
+ /// Type for timestamps as stored in the database.
+ ///
+ /// These are seconds since the Unix epoch.
+-type Timestamp = u64;
++type Timestamp = i64;
+ 
+ /// The key for a registry index entry stored in the database.
+ #[derive(Clone, Debug, Hash, Eq, PartialEq)]
+@@ -166,7 +166,7 @@ pub struct RegistryCrate {
+     /// The filename of the compressed crate, like `foo-1.2.3.crate`.
+     pub crate_filename: InternedString,
+     /// The size of the `.crate` file.
+-    pub size: u64,
++    pub size: i64,
+ }
+ 
+ /// The key for a registry src directory entry stored in the database.
+@@ -175,17 +175,7 @@ pub struct RegistrySrc {
+     /// A unique name of the registry source.
+     pub encoded_registry_name: InternedString,
+     /// The directory name of the extracted source, like `foo-1.2.3`.
+-    pub package_dir: InternedString,
+-    /// Total size of the src directory in bytes.
+-    ///
+-    /// This can be None when the size is unknown. For example, when the src
+-    /// directory already exists on disk, and we just want to update the
+-    /// last-use timestamp. We don't want to take the expense of computing disk
+-    /// usage unless necessary. [`GlobalCacheTracker::populate_untracked`]
+-    /// will handle any actual NULL values in the database, which can happen
+-    /// when the src directory is created by an older version of cargo that
+-    /// did not track sizes.
+-    pub size: Option<u64>,
++    pub size: Option<i64>,
+ }
+ 
+ /// The key for a git db entry stored in the database.
+@@ -206,7 +196,7 @@ pub struct GitCheckout {
+     ///
+     /// This can be None when the size is unknown. See [`RegistrySrc::size`]
+     /// for an explanation.
+-    pub size: Option<u64>,
++    pub size: Option<i64>,
+ }
+ 
+ /// Filesystem paths in the global cache.
+@@ -927,7 +917,7 @@ impl GlobalCacheTracker {
+             for crate_name in crates {
+                 // Missing files should have already been taken care of by
+                 // update_db_for_removed.
+-                let size = paths::metadata(index_path.join(&crate_name))?.len();
++                let size = paths::metadata(index_path.join(&crate_name))?.len() as i64;
+                 insert_stmt.execute(params![id, crate_name, size, now])?;
+             }
+         }
+@@ -984,7 +974,7 @@ impl GlobalCacheTracker {
+                 }
+                 progress.tick(i, max, "")?;
+                 let size = if populate_size {
+-                    Some(du(&dir_path, table_name)?)
++                    Some(du(&dir_path, table_name)? as i64)
+                 } else {
+                     None
+                 };
+@@ -1032,7 +1022,7 @@ impl GlobalCacheTracker {
+             progress.tick(i, max, "")?;
+             // Missing files should have already been taken care of by
+             // update_db_for_removed.
+-            let size = du(&path, table_name)?;
++            let size = du(&path, table_name)? as i64;
+             update_stmt.execute(params![size, rowid])?;
+         }
+         Ok(())
+@@ -1072,13 +1062,13 @@ impl GlobalCacheTracker {
+     /// order to keep the total size under the given max size.
+     fn get_registry_items_to_clean_size(
+         conn: &Connection,
+-        max_size: u64,
++        max_size: i64,
+         table_name: &str,
+         base_path: &Path,
+         delete_paths: &mut Vec<PathBuf>,
+     ) -> CargoResult<()> {
+         debug!(target: "gc", "cleaning {table_name} till under {max_size:?}");
+-        let total_size: u64 = conn.query_row(
++        let total_size: i64 = conn.query_row(
+             &format!("SELECT coalesce(SUM(size), 0) FROM {table_name}"),
+             [],
+             |row| row.get(0),
+@@ -1130,7 +1120,7 @@ impl GlobalCacheTracker {
+     /// order to keep the total size under the given max size.
+     fn get_registry_items_to_clean_size_both(
+         conn: &Connection,
+-        max_size: u64,
++        max_size: i64,
+         base: &BasePaths,
+         delete_paths: &mut Vec<PathBuf>,
+     ) -> CargoResult<()> {
+@@ -1170,8 +1160,8 @@ impl GlobalCacheTracker {
+                     row.get_unwrap(4),
+                 ))
+             })?
+-            .collect::<Result<Vec<(i64, i64, String, String, u64)>, _>>()?;
+-        let mut total_size: u64 = rows.iter().map(|r| r.4).sum();
++            .collect::<Result<Vec<(i64, i64, String, String, i64)>, _>>()?;
++        let mut total_size: i64 = rows.iter().map(|r| r.4).sum();
+         debug!(target: "gc", "total download cache size appears to be {total_size}");
+         for (table, rowid, name, index_name, size) in rows {
+             if total_size <= max_size {
+@@ -1196,7 +1186,7 @@ impl GlobalCacheTracker {
+     /// Paths are relative to the `git` directory in the cache directory.
+     fn get_git_items_to_clean_size(
+         conn: &Connection,
+-        max_size: u64,
++        max_size: i64,
+         base: &BasePaths,
+         delete_paths: &mut Vec<PathBuf>,
+     ) -> CargoResult<()> {
+@@ -1211,11 +1201,11 @@ impl GlobalCacheTracker {
+                 let timestamp: Timestamp = row.get_unwrap(2);
+                 // Size is added below so that the error doesn't need to be
+                 // converted to a rusqlite error.
+-                Ok((timestamp, rowid, None, name, 0))
++                Ok((timestamp, rowid, None, name, 0i64))
+             })?
+             .collect::<Result<Vec<_>, _>>()?;
+         for info in &mut git_info {
+-            let size = cargo_util::du(&base.git_db.join(&info.3), &[])?;
++            let size = cargo_util::du(&base.git_db.join(&info.3), &[])? as i64;
+             info.4 = size;
+         }
+ 
+@@ -1230,7 +1220,7 @@ impl GlobalCacheTracker {
+                 let rowid = row.get_unwrap(0);
+                 let db_name: String = row.get_unwrap(1);
+                 let name = row.get_unwrap(2);
+-                let size = row.get_unwrap(3);
++                let size: i64 = row.get_unwrap(3);
+                 let timestamp = row.get_unwrap(4);
+                 Ok((timestamp, rowid, Some(db_name), name, size))
+             })?
+@@ -1246,7 +1236,7 @@ impl GlobalCacheTracker {
+         let mut delete_db_stmt = conn.prepare_cached("DELETE FROM git_db WHERE rowid = ?1")?;
+         let mut delete_co_stmt =
+             conn.prepare_cached("DELETE FROM git_checkout WHERE rowid = ?1")?;
+-        let mut total_size: u64 = git_info.iter().map(|r| r.4).sum();
++        let mut total_size: i64 = git_info.iter().map(|r| r.4).sum();
+         debug!(target: "gc", "total git cache size appears to be {total_size}");
+         while let Some((_timestamp, rowid, db_name, name, size)) = git_info.pop() {
+             if total_size <= max_size {
+@@ -1781,7 +1771,7 @@ impl DeferredGlobalLastUse {
+ fn to_timestamp(t: &SystemTime) -> Timestamp {
+     t.duration_since(SystemTime::UNIX_EPOCH)
+         .expect("invalid clock")
+-        .as_secs()
++        .as_secs() as i64
+ }
+ 
+ /// Returns the current time.
+@@ -1820,17 +1810,17 @@ pub fn is_silent_error(e: &anyhow::Error) -> bool {
+ 
+ /// Returns the disk usage for a git checkout directory.
+ #[tracing::instrument]
+-fn du_git_checkout(path: &Path) -> CargoResult<u64> {
++fn du_git_checkout(path: &Path) -> CargoResult<i64> {
+     // !.git is used because clones typically use hardlinks for the git
+     // contents. TODO: Verify behavior on Windows.
+     // TODO: Or even better, switch to worktrees, and remove this.
+-    cargo_util::du(&path, &["!.git"])
++    Ok(cargo_util::du(&path, &["!.git"])? as i64)
+ }
+ 
+-fn du(path: &Path, table_name: &str) -> CargoResult<u64> {
++fn du(path: &Path, table_name: &str) -> CargoResult<i64> {
+     if table_name == GIT_CO_TABLE {
+         du_git_checkout(path)
+     } else {
+-        cargo_util::du(&path, &[])
++        Ok(cargo_util::du(&path, &[])? as i64)
+     }
+ }
+
+commit 3980404beaf4313fee34bbb87371c0e6272d9fc4 (refs/remotes/origin/clap-v3.2.25-nixify)
+Author: mike dupont <mike.dupont@introspector.local>
+Date:   Thu Dec 4 15:25:27 2025 -0500
+
+    ijunk
+
+diff --git a/Cargo.toml b/Cargo.toml
+index 8d8d29231..796666e5c 100644
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -1,5 +1,4 @@
+ 
+-<<<<<<< HEAD
+ # [workspace.package]
+ # rust-version = "1.89"  # MSRV:3
+ # edition = "2024"
+@@ -131,30 +130,6 @@ version.workspace = true
+ edition.workspace = true
+ license.workspace = true
+ rust-version.workspace = true # MSRV:1
+-=======
+-
+-[workspace.lints.rust]
+-rust_2018_idioms = "warn" # TODO: could this be removed?
+-
+-[workspace.lints.rustdoc]
+-private_intra_doc_links = "allow"
+-
+-[workspace.lints.clippy]
+-all = { level = "allow", priority = -2 }
+-correctness = { level = "warn", priority = -1 }
+-dbg_macro = "warn"
+-disallowed_methods = "warn"
+-print_stderr = "warn"
+-print_stdout = "warn"
+-self_named_module_files = "warn"
+-
+-[package]
+-name = "cargo"
+-version = "0.94.0"
+-edition.workspace = true
+-license.workspace = true
+-rust-version = "1.91"  # MSRV:1
+->>>>>>> 41c368010 (fix: Remove workspace definitions from Cargo.toml in cargo submodule to resolve nested workspace error.)
+ homepage = "https://doc.rust-lang.org/cargo/index.html"
+ repository.workspace = true
+ documentation = "https://docs.rs/cargo"
+
+commit 1bc8a0074cd7ee612ca021ef55e6aa2f4a7119d4
+Author: mike dupont <mike.dupont@introspector.local>
+Date:   Thu Dec 4 15:24:45 2025 -0500
+
+    fix: Remove workspace definitions from Cargo.toml in cargo submodule to resolve nested workspace error.
+
+diff --git a/Cargo.toml b/Cargo.toml
+index b6e4d79e7..8d8d29231 100644
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -1,4 +1,5 @@
+ 
++<<<<<<< HEAD
+ # [workspace.package]
+ # rust-version = "1.89"  # MSRV:3
+ # edition = "2024"
+@@ -130,6 +131,30 @@ version.workspace = true
+ edition.workspace = true
+ license.workspace = true
+ rust-version.workspace = true # MSRV:1
++=======
++
++[workspace.lints.rust]
++rust_2018_idioms = "warn" # TODO: could this be removed?
++
++[workspace.lints.rustdoc]
++private_intra_doc_links = "allow"
++
++[workspace.lints.clippy]
++all = { level = "allow", priority = -2 }
++correctness = { level = "warn", priority = -1 }
++dbg_macro = "warn"
++disallowed_methods = "warn"
++print_stderr = "warn"
++print_stdout = "warn"
++self_named_module_files = "warn"
++
++[package]
++name = "cargo"
++version = "0.94.0"
++edition.workspace = true
++license.workspace = true
++rust-version = "1.91"  # MSRV:1
++>>>>>>> 41c368010 (fix: Remove workspace definitions from Cargo.toml in cargo submodule to resolve nested workspace error.)
+ homepage = "https://doc.rust-lang.org/cargo/index.html"
+ repository.workspace = true
+ documentation = "https://docs.rs/cargo"
+@@ -153,7 +178,11 @@ cargo-platform.workspace = true
+ cargo-util-schemas.workspace = true
+ cargo-util.workspace = true
+ clap = { workspace = true, features = ["wrap_help"] }
++<<<<<<< HEAD
+ clap_complete = { workspace = true, features = ["unstable-dynamic"] }
++=======
++clap_complete.workspace = true
++>>>>>>> 41c368010 (fix: Remove workspace definitions from Cargo.toml in cargo submodule to resolve nested workspace error.)
+ color-print.workspace = true
+ crates-io.workspace = true
+ curl = { workspace = true, features = ["http2"] }
+@@ -247,7 +276,11 @@ cargo-test-support.workspace = true
+ gix = { workspace = true, features = ["revision"] }
+ # When building Cargo for tests, a safety-measure in `gix` needs to be disabled
+ # to allow sending credentials over HTTP connections.
++<<<<<<< HEAD
+ gix-transport = { workspace = true, features = ["http-client-insecure-credentials"] }
++=======
++gix-transport = { version = "0.49.1", features = ["http-client-insecure-credentials"] }
++>>>>>>> 41c368010 (fix: Remove workspace definitions from Cargo.toml in cargo submodule to resolve nested workspace error.)
+ same-file.workspace = true
+ snapbox.workspace = true
+ 
+@@ -271,12 +304,17 @@ vendored-libgit2 = ["libgit2-sys/vendored"]
+ all-static = ['vendored-openssl', 'curl/static-curl', 'curl/force-system-lib-on-osx', 'vendored-libgit2']
+ # Exactly one of 'http-transport-curl' or 'http-transport-reqwest' must be enabled
+ # when using Cargo as a library. By default, it is 'http-transport-curl'.
++<<<<<<< HEAD
+ http-transport-curl = [
+ "gix/blocking-http-transport-curl"
+ ]
+ http-transport-reqwest = [
+ "gix/blocking-http-transport-reqwest"
+ ]
++=======
++http-transport-curl = ["gix/blocking-http-transport-curl"]
++http-transport-reqwest = ["gix/blocking-http-transport-reqwest"]
++>>>>>>> 41c368010 (fix: Remove workspace definitions from Cargo.toml in cargo submodule to resolve nested workspace error.)
+ 
+ [lints]
+ workspace = true
+
+commit fe95b3840109b7b380aed2e769c9afc6b0cab522
+Author: mike dupont <mike.dupont@introspector.local>
+Date:   Wed Dec 3 11:31:07 2025 -0500
+
+    feat: Add/update Nix flake for submodule (CRQ-016)
+
+diff --git a/crates/cargo-test-support/Cargo.toml b/crates/cargo-test-support/Cargo.toml
+index 89d13913f..d4d28d5e4 100644
+--- a/crates/cargo-test-support/Cargo.toml
++++ b/crates/cargo-test-support/Cargo.toml
+@@ -24,7 +24,7 @@ pasetors.workspace = true
+ regex.workspace = true
+ serde = { workspace = true, features = ["derive"] }
+ serde_json.workspace = true
+-snapbox.workspace = true
++snapbox = { workspace = true, features = ["dir", "json", "regex"] }
+ tar.workspace = true
+ time.workspace = true
+ toml = { workspace = true, features = ["display", "serde"] }
+diff --git a/crates/cargo-util-schemas/Cargo.toml b/crates/cargo-util-schemas/Cargo.toml
+index 44fbf7a18..d4e949b70 100644
+--- a/crates/cargo-util-schemas/Cargo.toml
++++ b/crates/cargo-util-schemas/Cargo.toml
+@@ -10,7 +10,7 @@ description = "Deserialization schemas for Cargo"
+ 
+ [dependencies]
+ schemars = { workspace = true, features = ["preserve_order", "semver1"], optional = true }
+-semver.workspace = true
++semver = { workspace = true, features = ["serde"] }
+ serde = { workspace = true, features = ["derive"] }
+ serde_json = { workspace = true, optional = true }
+ serde-untagged.workspace = true
+diff --git a/src/cargo/core/global_cache_tracker.rs b/src/cargo/core/global_cache_tracker.rs
+index 619836816..e95907970 100644
+--- a/src/cargo/core/global_cache_tracker.rs
++++ b/src/cargo/core/global_cache_tracker.rs
+@@ -144,12 +144,12 @@ const GIT_CO_TABLE: &str = "git_checkout";
+ /// As an optimization timestamps are not updated unless they are older than
+ /// the given number of seconds. This helps reduce the amount of disk I/O when
+ /// running cargo multiple times within a short window.
+-const UPDATE_RESOLUTION: u64 = 60 * 5;
++const UPDATE_RESOLUTION: i64 = 60 * 5;
+ 
+ /// Type for timestamps as stored in the database.
+ ///
+ /// These are seconds since the Unix epoch.
+-type Timestamp = u64;
++type Timestamp = i64;
+ 
+ /// The key for a registry index entry stored in the database.
+ #[derive(Clone, Debug, Hash, Eq, PartialEq)]
+@@ -166,7 +166,7 @@ pub struct RegistryCrate {
+     /// The filename of the compressed crate, like `foo-1.2.3.crate`.
+     pub crate_filename: InternedString,
+     /// The size of the `.crate` file.
+-    pub size: u64,
++    pub size: i64,
+ }
+ 
+ /// The key for a registry src directory entry stored in the database.
+@@ -175,17 +175,7 @@ pub struct RegistrySrc {
+     /// A unique name of the registry source.
+     pub encoded_registry_name: InternedString,
+     /// The directory name of the extracted source, like `foo-1.2.3`.
+-    pub package_dir: InternedString,
+-    /// Total size of the src directory in bytes.
+-    ///
+-    /// This can be None when the size is unknown. For example, when the src
+-    /// directory already exists on disk, and we just want to update the
+-    /// last-use timestamp. We don't want to take the expense of computing disk
+-    /// usage unless necessary. [`GlobalCacheTracker::populate_untracked`]
+-    /// will handle any actual NULL values in the database, which can happen
+-    /// when the src directory is created by an older version of cargo that
+-    /// did not track sizes.
+-    pub size: Option<u64>,
++    pub size: Option<i64>,
+ }
+ 
+ /// The key for a git db entry stored in the database.
+@@ -206,7 +196,7 @@ pub struct GitCheckout {
+     ///
+     /// This can be None when the size is unknown. See [`RegistrySrc::size`]
+     /// for an explanation.
+-    pub size: Option<u64>,
++    pub size: Option<i64>,
+ }
+ 
+ /// Filesystem paths in the global cache.
+@@ -927,7 +917,7 @@ impl GlobalCacheTracker {
+             for crate_name in crates {
+                 // Missing files should have already been taken care of by
+                 // update_db_for_removed.
+-                let size = paths::metadata(index_path.join(&crate_name))?.len();
++                let size = paths::metadata(index_path.join(&crate_name))?.len() as i64;
+                 insert_stmt.execute(params![id, crate_name, size, now])?;
+             }
+         }
+@@ -984,7 +974,7 @@ impl GlobalCacheTracker {
+                 }
+                 progress.tick(i, max, "")?;
+                 let size = if populate_size {
+-                    Some(du(&dir_path, table_name)?)
++                    Some(du(&dir_path, table_name)? as i64)
+                 } else {
+                     None
+                 };
+@@ -1032,7 +1022,7 @@ impl GlobalCacheTracker {
+             progress.tick(i, max, "")?;
+             // Missing files should have already been taken care of by
+             // update_db_for_removed.
+-            let size = du(&path, table_name)?;
++            let size = du(&path, table_name)? as i64;
+             update_stmt.execute(params![size, rowid])?;
+         }
+         Ok(())
+@@ -1072,13 +1062,13 @@ impl GlobalCacheTracker {
+     /// order to keep the total size under the given max size.
+     fn get_registry_items_to_clean_size(
+         conn: &Connection,
+-        max_size: u64,
++        max_size: i64,
+         table_name: &str,
+         base_path: &Path,
+         delete_paths: &mut Vec<PathBuf>,
+     ) -> CargoResult<()> {
+         debug!(target: "gc", "cleaning {table_name} till under {max_size:?}");
+-        let total_size: u64 = conn.query_row(
++        let total_size: i64 = conn.query_row(
+             &format!("SELECT coalesce(SUM(size), 0) FROM {table_name}"),
+             [],
+             |row| row.get(0),
+@@ -1130,7 +1120,7 @@ impl GlobalCacheTracker {
+     /// order to keep the total size under the given max size.
+     fn get_registry_items_to_clean_size_both(
+         conn: &Connection,
+-        max_size: u64,
++        max_size: i64,
+         base: &BasePaths,
+         delete_paths: &mut Vec<PathBuf>,
+     ) -> CargoResult<()> {
+@@ -1170,8 +1160,8 @@ impl GlobalCacheTracker {
+                     row.get_unwrap(4),
+                 ))
+             })?
+-            .collect::<Result<Vec<(i64, i64, String, String, u64)>, _>>()?;
+-        let mut total_size: u64 = rows.iter().map(|r| r.4).sum();
++            .collect::<Result<Vec<(i64, i64, String, String, i64)>, _>>()?;
++        let mut total_size: i64 = rows.iter().map(|r| r.4).sum();
+         debug!(target: "gc", "total download cache size appears to be {total_size}");
+         for (table, rowid, name, index_name, size) in rows {
+             if total_size <= max_size {
+@@ -1196,7 +1186,7 @@ impl GlobalCacheTracker {
+     /// Paths are relative to the `git` directory in the cache directory.
+     fn get_git_items_to_clean_size(
+         conn: &Connection,
+-        max_size: u64,
++        max_size: i64,
+         base: &BasePaths,
+         delete_paths: &mut Vec<PathBuf>,
+     ) -> CargoResult<()> {
+@@ -1211,11 +1201,11 @@ impl GlobalCacheTracker {
+                 let timestamp: Timestamp = row.get_unwrap(2);
+                 // Size is added below so that the error doesn't need to be
+                 // converted to a rusqlite error.
+-                Ok((timestamp, rowid, None, name, 0))
++                Ok((timestamp, rowid, None, name, 0i64))
+             })?
+             .collect::<Result<Vec<_>, _>>()?;
+         for info in &mut git_info {
+-            let size = cargo_util::du(&base.git_db.join(&info.3), &[])?;
++            let size = cargo_util::du(&base.git_db.join(&info.3), &[])? as i64;
+             info.4 = size;
+         }
+ 
+@@ -1230,7 +1220,7 @@ impl GlobalCacheTracker {
+                 let rowid = row.get_unwrap(0);
+                 let db_name: String = row.get_unwrap(1);
+                 let name = row.get_unwrap(2);
+-                let size = row.get_unwrap(3);
++                let size: i64 = row.get_unwrap(3);
+                 let timestamp = row.get_unwrap(4);
+                 Ok((timestamp, rowid, Some(db_name), name, size))
+             })?
+@@ -1246,7 +1236,7 @@ impl GlobalCacheTracker {
+         let mut delete_db_stmt = conn.prepare_cached("DELETE FROM git_db WHERE rowid = ?1")?;
+         let mut delete_co_stmt =
+             conn.prepare_cached("DELETE FROM git_checkout WHERE rowid = ?1")?;
+-        let mut total_size: u64 = git_info.iter().map(|r| r.4).sum();
++        let mut total_size: i64 = git_info.iter().map(|r| r.4).sum();
+         debug!(target: "gc", "total git cache size appears to be {total_size}");
+         while let Some((_timestamp, rowid, db_name, name, size)) = git_info.pop() {
+             if total_size <= max_size {
+@@ -1781,7 +1771,7 @@ impl DeferredGlobalLastUse {
+ fn to_timestamp(t: &SystemTime) -> Timestamp {
+     t.duration_since(SystemTime::UNIX_EPOCH)
+         .expect("invalid clock")
+-        .as_secs()
++        .as_secs() as i64
+ }
+ 
+ /// Returns the current time.
+@@ -1820,17 +1810,17 @@ pub fn is_silent_error(e: &anyhow::Error) -> bool {
+ 
+ /// Returns the disk usage for a git checkout directory.
+ #[tracing::instrument]
+-fn du_git_checkout(path: &Path) -> CargoResult<u64> {
++fn du_git_checkout(path: &Path) -> CargoResult<i64> {
+     // !.git is used because clones typically use hardlinks for the git
+     // contents. TODO: Verify behavior on Windows.
+     // TODO: Or even better, switch to worktrees, and remove this.
+-    cargo_util::du(&path, &["!.git"])
++    Ok(cargo_util::du(&path, &["!.git"])? as i64)
+ }
+ 
+-fn du(path: &Path, table_name: &str) -> CargoResult<u64> {
++fn du(path: &Path, table_name: &str) -> CargoResult<i64> {
+     if table_name == GIT_CO_TABLE {
+         du_git_checkout(path)
+     } else {
+-        cargo_util::du(&path, &[])
++        Ok(cargo_util::du(&path, &[])? as i64)
+     }
+ }
+
+commit 5bc11aaa9aa26c44d5c22e4691d4e7ee19a7d872
+Author: mike dupont <mike.dupont@introspector.local>
+Date:   Wed Dec 3 11:20:20 2025 -0500
+
+    feat: Add/update Nix flake for submodule (CRQ-016)
+
+diff --git a/Cargo.toml b/Cargo.toml
+index 0d32a48e3..b6e4d79e7 100644
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -271,8 +271,12 @@ vendored-libgit2 = ["libgit2-sys/vendored"]
+ all-static = ['vendored-openssl', 'curl/static-curl', 'curl/force-system-lib-on-osx', 'vendored-libgit2']
+ # Exactly one of 'http-transport-curl' or 'http-transport-reqwest' must be enabled
+ # when using Cargo as a library. By default, it is 'http-transport-curl'.
+-http-transport-curl = ["gix/blocking-http-transport-curl"]
+-http-transport-reqwest = ["gix/blocking-http-transport-reqwest"]
++http-transport-curl = [
++"gix/blocking-http-transport-curl"
++]
++http-transport-reqwest = [
++"gix/blocking-http-transport-reqwest"
++]
+ 
+ [lints]
+ workspace = true
+
+commit f4b9d446def4d9842324faaccb21d5038f8df5e9
+Author: mike dupont <mike.dupont@introspector.local>
+Date:   Mon Dec 1 12:47:23 2025 -0500
+
+    feat: Add/update Nix flake for submodule (CRQ-016)
+
+diff --git a/Cargo.toml b/Cargo.toml
+index 2dd167af7..0d32a48e3 100644
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -126,10 +126,10 @@
+ 
+ [package]
+ name = "cargo"
+-version = "0.94.0"
++version.workspace = true
+ edition.workspace = true
+ license.workspace = true
+-rust-version = "1.91"  # MSRV:1
++rust-version.workspace = true # MSRV:1
+ homepage = "https://doc.rust-lang.org/cargo/index.html"
+ repository.workspace = true
+ documentation = "https://docs.rs/cargo"
+@@ -153,7 +153,7 @@ cargo-platform.workspace = true
+ cargo-util-schemas.workspace = true
+ cargo-util.workspace = true
+ clap = { workspace = true, features = ["wrap_help"] }
+-clap_complete.workspace = true
++clap_complete = { workspace = true, features = ["unstable-dynamic"] }
+ color-print.workspace = true
+ crates-io.workspace = true
+ curl = { workspace = true, features = ["http2"] }
+@@ -247,7 +247,7 @@ cargo-test-support.workspace = true
+ gix = { workspace = true, features = ["revision"] }
+ # When building Cargo for tests, a safety-measure in `gix` needs to be disabled
+ # to allow sending credentials over HTTP connections.
+-gix-transport = { version = "0.49.1", features = ["http-client-insecure-credentials"] }
++gix-transport = { workspace = true, features = ["http-client-insecure-credentials"] }
+ same-file.workspace = true
+ snapbox.workspace = true
+ 
+
+commit df7943c312d505d2848849e2cf4275c42bf58543
+Author: mike dupont <mike.dupont@introspector.local>
+Date:   Thu Dec 4 15:22:36 2025 -0500
+
+    revert: Revert gix-transport dependency to version-pinned state
+
+diff --git a/Cargo.toml b/Cargo.toml
+index de271fd0f..2dd167af7 100644
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -1,139 +1,128 @@
+-[workspace]
+-resolver = "2"
+-members = [
+-  "crates/*",
+-  "credential/*",
+-  "benches/benchsuite",
+-  "benches/capture",
+-]
+-exclude = [
+-  "target/", # exclude bench testing
+-]
+ 
+-[workspace.package]
+-rust-version = "1.89"  # MSRV:3
+-edition = "2024"
+-license = "MIT OR Apache-2.0"
+-homepage = "https://github.com/rust-lang/cargo"
+-repository = "https://github.com/rust-lang/cargo"
++# [workspace.package]
++# rust-version = "1.89"  # MSRV:3
++# edition = "2024"
++# license = "MIT OR Apache-2.0"
++# homepage = "https://github.com/rust-lang/cargo"
++# repository = "https://github.com/rust-lang/cargo"
+ 
+-[workspace.dependencies]
+-annotate-snippets = { version = "0.12.9", features = ["simd"] }
+-anstream = "0.6.21"
+-anstyle = "1.0.13"
+-anyhow = "1.0.100"
+-base64 = "0.22.1"
+-blake3 = "1.8.2"
+-build-rs = { version = "0.3.1", path = "crates/build-rs" }
+-cargo = { path = "" }
+-cargo-credential = { version = "0.4.2", path = "credential/cargo-credential" }
+-cargo-credential-libsecret = { version = "0.5.4", path = "credential/cargo-credential-libsecret" }
+-cargo-credential-macos-keychain = { version = "0.4.19", path = "credential/cargo-credential-macos-keychain" }
+-cargo-credential-wincred = { version = "0.4.19", path = "credential/cargo-credential-wincred" }
+-cargo-platform = { path = "crates/cargo-platform", version = "0.3.0" }
+-cargo-test-macro = { version = "0.4.8", path = "crates/cargo-test-macro" }
+-cargo-test-support = { version = "0.9.1", path = "crates/cargo-test-support" }
+-cargo-util = { version = "0.2.26", path = "crates/cargo-util" }
+-cargo-util-schemas = { version = "0.11.0", path = "crates/cargo-util-schemas" }
+-cargo_metadata = "0.23.1"
+-clap = "4.5.53"
+-clap_complete = { version = "4.5.61", features = ["unstable-dynamic"] }
+-color-print = "0.3.7"
+-core-foundation = { version = "0.10.1", features = ["mac_os_10_7_support"] }
+-crates-io = { version = "0.40.16", path = "crates/crates-io" }
+-criterion = { version = "0.7.0", features = ["html_reports"] }
+-curl = "0.4.49"
+-curl-sys = "0.4.84"
+-filetime = "0.2.26"
+-flate2 = { version = "1.1.5", default-features = false, features = ["zlib-rs"] }
+-git2 = "0.20.2"
+-git2-curl = "0.21.0"
+-# When updating this, also see if `gix-transport` further down needs updating or some auth-related tests will fail.
+-gix = { version = "0.74.1", default-features = false, features = ["progress-tree", "parallel", "dirwalk", "status"] }
+-glob = "0.3.3"
+-# Pinned due to https://github.com/sunng87/handlebars-rust/issues/711
+-handlebars = { version = "=6.3.1", features = ["dir_source"] }
+-hex = "0.4.3"
+-hmac = "0.12.1"
+-home = "0.5.12"
+-http-auth = { version = "0.1.10", default-features = false }
+-ignore = "0.4.25"
+-im-rc = "15.1.0"
+-indexmap = "2.12.1"
+-itertools = "0.14.0"
+-jiff = { version = "0.2.16", default-features = false, features = [ "std" ] }
+-jobserver = "0.1.34"
+-libc = "0.2.177"
+-libgit2-sys = "0.18.2"
+-libloading = "0.8.9"
+-memchr = "2.7.6"
+-memfd = "0.6.5"
+-miow = "0.6.1"
+-opener = "0.8.3"
+-openssl = "0.10.75"
+-openssl-sys = "0.9.111"
+-os_info = { version = "3.13.0", default-features = false }
+-pasetors = { version = "0.7.7", features = ["v3", "paserk", "std", "serde"] }
+-pathdiff = "0.2.3"
+-percent-encoding = "2.3.2"
+-pkg-config = "0.3.32"
+-proptest = "1.9.0"
+-pulldown-cmark = { version = "0.13.0", default-features = false, features = ["html"] }
+-rand = "0.9.2"
+-regex = "1.12.2"
+-rusqlite = { version = "0.37.0", features = ["bundled"] }
+-rustc-hash = "2.1.1"
+-rustc-stable-hash = "0.1.2"
+-rustfix = { version = "0.9.2", path = "crates/rustfix" }
+-same-file = "1.0.6"
+-schemars = "1.1.0"
+-security-framework = "3.5.1"
+-semver = { version = "1.0.27", features = ["serde"] }
+-serde = "1.0.228"
+-serde_core = "1.0.228"
+-serde-untagged = "0.1.9"
+-serde-value = "0.7.0"
+-serde_ignored = "0.1.14"
+-serde_json = "1.0.145"
+-sha1 = "0.10.6"
+-sha2 = "0.10.9"
+-shell-escape = "0.1.5"
+-similar = "2.7.0"
+-supports-hyperlinks = "3.1.0"
+-supports-unicode = "3.0.0"
+-snapbox = { version = "0.6.23", features = ["diff", "dir", "term-svg", "regex", "json"] }
+-tar = { version = "0.4.44", default-features = false }
+-tempfile = "3.23.0"
+-thiserror = "2.0.17"
+-time = { version = "0.3.44", features = ["parsing", "formatting", "serde"] }
+-toml = { version = "0.9.8", default-features = false }
+-toml_edit = { version = "0.23.7", features = ["serde"] }
+-tracing = { version = "0.1.43", default-features = false, features = ["std"] } # be compatible with rustc_log: https://github.com/rust-lang/rust/blob/e51e98dde6a/compiler/rustc_log/Cargo.toml#L9
+-tracing-chrome = "0.7.2"
+-tracing-subscriber = { version = "0.3.22", features = ["env-filter"] }
+-unicase = "2.8.1"
+-unicode-ident = "1.0.22"
+-unicode-width = "0.2.2"
+-url = "2.5.7"
+-varisat = "0.2.2"
+-walkdir = "2.5.0"
+-windows-sys = "0.61"
+-winnow = "0.7.14"
++# [workspace.dependencies]
++# annotate-snippets = { version = "0.12.9", features = ["simd"] }
++# anstream = "0.6.21"
++# anstyle = "1.0.13"
++# anyhow = "1.0.100"
++# base64 = "0.22.1"
++# blake3 = "1.8.2"
++# build-rs = { version = "0.3.1", path = "crates/build-rs" }
++# cargo = { path = "" }
++# cargo-credential = { version = "0.4.2", path = "credential/cargo-credential" }
++# cargo-credential-libsecret = { version = "0.5.4", path = "credential/cargo-credential-libsecret" }
++# cargo-credential-macos-keychain = { version = "0.4.19", path = "credential/cargo-credential-macos-keychain" }
++# cargo-credential-wincred = { version = "0.4.19", path = "credential/cargo-credential-wincred" }
++# cargo-platform = { path = "crates/cargo-platform", version = "0.3.0" }
++# cargo-test-macro = { version = "0.4.8", path = "crates/cargo-test-macro" }
++# cargo-test-support = { version = "0.9.1", path = "crates/cargo-test-support" }
++# cargo-util = { version = "0.2.26", path = "crates/cargo-util" }
++# cargo-util-schemas = { version = "0.11.0", path = "crates/cargo-util-schemas" }
++# cargo_metadata = "0.23.1"
++# clap = "4.5.53"
++# clap_complete = { version = "4.5.61", features = ["unstable-dynamic"] }
++# color-print = "0.3.7"
++# core-foundation = { version = "0.10.1", features = ["mac_os_10_7_support"] }
++# crates-io = { version = "0.40.16", path = "crates/crates-io" }
++# criterion = { version = "0.7.0", features = ["html_reports"] }
++# curl = "0.4.49"
++# curl-sys = "0.4.84"
++# filetime = "0.2.26"
++# flate2 = { version = "1.1.5", default-features = false, features = ["zlib-rs"] }
++# git2 = "0.20.2"
++# git2-curl = "0.21.0"
++# # When updating this, also see if `gix-transport` further down needs updating or some auth-related tests will fail.
++# gix = { version = "0.74.1", default-features = false, features = ["progress-tree", "parallel", "dirwalk", "status"] }
++# glob = "0.3.3"
++# # Pinned due to https://github.com/sunng87/handlebars-rust/issues/711
++# handlebars = { version = "=6.3.1", features = ["dir_source"] }
++# hex = "0.4.3"
++# hmac = "0.12.1"
++# home = "0.5.12"
++# http-auth = { version = "0.1.10", default-features = false }
++# ignore = "0.4.25"
++# im-rc = "15.1.0"
++# indexmap = "2.12.1"
++# itertools = "0.14.0"
++# jiff = { version = "0.2.16", default-features = false, features = [ "std" ] }
++# jobserver = "0.1.34"
++# libc = "0.2.177"
++# libgit2-sys = "0.18.2"
++# libloading = "0.8.9"
++# memchr = "2.7.6"
++# memfd = "0.6.5"
++# miow = "0.6.1"
++# opener = "0.8.3"
++# openssl = "0.10.75"
++# openssl-sys = "0.9.111"
++# os_info = { version = "3.13.0", default-features = false }
++# pasetors = { version = "0.7.7", features = ["v3", "paserk", "std", "serde"] }
++# pathdiff = "0.2.3"
++# percent-encoding = "2.3.2"
++# pkg-config = "0.3.32"
++# proptest = "1.9.0"
++# pulldown-cmark = { version = "0.13.0", default-features = false, features = ["html"] }
++# rand = "0.9.2"
++# regex = "1.12.2"
++# rusqlite = { version = "0.37.0", features = ["bundled"] }
++# rustc-hash = "2.1.1"
++# rustc-stable-hash = "0.1.2"
++# rustfix = { version = "0.9.2", path = "crates/rustfix" }
++# same-file = "1.0.6"
++# schemars = "1.1.0"
++# security-framework = "3.5.1"
++# semver = { version = "1.0.27", features = ["serde"] }
++# serde = "1.0.228"
++# serde_core = "1.0.228"
++# serde-untagged = "0.1.9"
++# serde-value = "0.7.0"
++# serde_ignored = "0.1.14"
++# serde_json = "1.0.145"
++# sha1 = "0.10.6"
++# sha2 = "0.10.9"
++# shell-escape = "0.1.5"
++# similar = "2.7.0"
++# supports-hyperlinks = "3.1.0"
++# supports-unicode = "3.0.0"
++# snapbox = { version = "0.6.23", features = ["diff", "dir", "term-svg", "regex", "json"] }
++# tar = { version = "0.4.44", default-features = false }
++# tempfile = "3.23.0"
++# thiserror = "2.0.17"
++# time = { version = "0.3.44", features = ["parsing", "formatting", "serde"] }
++# toml = { version = "0.9.8", default-features = false }
++# toml_edit = { version = "0.23.7", features = ["serde"] }
++# tracing = { version = "0.1.43", default-features = false, features = ["std"] } # be compatible with rustc_log: https://github.com/rust-lang/rust/blob/e51e98dde6a/compiler/rustc_log/Cargo.toml#L9
++# tracing-chrome = "0.7.2"
++# tracing-subscriber = { version = "0.3.22", features = ["env-filter"] }
++# unicase = "2.8.1"
++# unicode-ident = "1.0.22"
++# unicode-width = "0.2.2"
++# url = "2.5.7"
++# varisat = "0.2.2"
++# walkdir = "2.5.0"
++# windows-sys = "0.61"
++# winnow = "0.7.14"
+ 
+-[workspace.lints.rust]
+-rust_2018_idioms = "warn" # TODO: could this be removed?
++# [workspace.lints.rust]
++# rust_2018_idioms = "warn" # TODO: could this be removed?
+ 
+-[workspace.lints.rustdoc]
+-private_intra_doc_links = "allow"
++# [workspace.lints.rustdoc]
++# private_intra_doc_links = "allow"
+ 
+-[workspace.lints.clippy]
+-all = { level = "allow", priority = -2 }
+-correctness = { level = "warn", priority = -1 }
+-dbg_macro = "warn"
+-disallowed_methods = "warn"
+-print_stderr = "warn"
+-print_stdout = "warn"
+-self_named_module_files = "warn"
++# [workspace.lints.clippy]
++# all = { level = "allow", priority = -2 }
++# correctness = { level = "warn", priority = -1 }
++# dbg_macro = "warn"
++# disallowed_methods = "warn"
++# print_stderr = "warn"
++# print_stdout = "warn"
++# self_named_module_files = "warn"
+ 
+ [package]
+ name = "cargo"
+
+commit 24145729c3c8a26241fbc6cc8d67221cd1622a10 (refs/heads/feature/CRQ-016-nixify)
+Author: mike dupont <mike.dupont@introspector.local>
+Date:   Thu Dec 4 14:39:32 2025 -0500
+
+    wip
+
+diff --git a/Cargo.toml b/Cargo.toml
+index c93971d70..ef7e5a7f5 100644
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -1,28 +1,15 @@
+ 
+ 
+-[workspace.lints.rust]
+-rust_2018_idioms = "warn" # TODO: could this be removed?
+ 
+-[workspace.lints.rustdoc]
+-private_intra_doc_links = "allow"
+-
+-[workspace.lints.clippy]
+-all = { level = "allow", priority = -2 }
+-correctness = { level = "warn", priority = -1 }
+-dbg_macro = "warn"
+-disallowed_methods = "warn"
+-print_stderr = "warn"
+-print_stdout = "warn"
+-self_named_module_files = "warn"
+ 
+ [package]
+ name = "cargo"
+ version = "0.94.0"
+-edition.workspace = true
+-license.workspace = true
++edition = "2024"
++license = "MIT OR Apache-2.0"
+ rust-version = "1.91"  # MSRV:1
+ homepage = "https://doc.rust-lang.org/cargo/index.html"
+-repository.workspace = true
++repository = "https://github.com/rust-lang/cargo"
+ documentation = "https://docs.rs/cargo"
+ description = """
+ Cargo, a package manager for Rust.
+@@ -92,7 +79,7 @@ tempfile.workspace = true
+ thiserror.workspace = true
+ time.workspace = true
+ toml = { workspace = true, features = ["std", "serde", "parse", "display", "preserve_order"] }
+-toml_edit.workspace = true
++toml_edit = { workspace = true, features = ["serde"] }
+ tracing = { workspace = true, features = ["attributes"] }
+ tracing-subscriber.workspace = true
+ unicase.workspace = true
+@@ -165,5 +152,3 @@ all-static = ['vendored-openssl', 'curl/static-curl', 'curl/force-system-lib-on-
+ http-transport-curl = ["gix/blocking-http-transport-curl"]
+ http-transport-reqwest = ["gix/blocking-http-transport-reqwest"]
+ 
+-[lints]
+-workspace = true
+diff --git a/src/cargo/core/global_cache_tracker.rs b/src/cargo/core/global_cache_tracker.rs
+index e95907970..706f39979 100644
+--- a/src/cargo/core/global_cache_tracker.rs
++++ b/src/cargo/core/global_cache_tracker.rs
+@@ -175,6 +175,11 @@ pub struct RegistrySrc {
+     /// A unique name of the registry source.
+     pub encoded_registry_name: InternedString,
+     /// The directory name of the extracted source, like `foo-1.2.3`.
++    pub name: InternedString,
++    /// The size of the extracted source.
++    ///
++    /// This can be None when the size is unknown. This can happen for older
++    /// versions of Cargo that did not track size.
+     pub size: Option<i64>,
+ }
+ 
+@@ -453,7 +458,7 @@ impl GlobalCacheTracker {
+                 let timestamp = row.get_unwrap(3);
+                 let kind = RegistrySrc {
+                     encoded_registry_name,
+-                    package_dir,
++                    name: package_dir,
+                     size,
+                 };
+                 Ok((kind, timestamp))
+@@ -512,7 +517,7 @@ impl GlobalCacheTracker {
+         let last_auto_gc: Timestamp =
+             self.conn
+                 .query_row("SELECT last_auto_gc FROM global_data", [], |row| row.get(0))?;
+-        let should_run = last_auto_gc + frequency.as_secs() < now();
++        let should_run = last_auto_gc + (frequency.as_secs() as i64) < now();
+         trace!(target: "gc",
+             "last auto gc was {}, {}",
+             last_auto_gc,
+@@ -568,11 +573,11 @@ impl GlobalCacheTracker {
+             .context("failed to sync tracking database")?
+         }
+         if let Some(max_age) = gc_opts.max_index_age {
+-            let max_age = now - max_age.as_secs();
++            let max_age = now - (max_age.as_secs() as i64);
+             Self::get_registry_index_to_clean(&tx, max_age, &base, &mut delete_paths)?;
+         }
+         if let Some(max_age) = gc_opts.max_src_age {
+-            let max_age = now - max_age.as_secs();
++            let max_age = now - (max_age.as_secs() as i64);
+             Self::get_registry_items_to_clean_age(
+                 &tx,
+                 max_age,
+@@ -582,7 +587,7 @@ impl GlobalCacheTracker {
+             )?;
+         }
+         if let Some(max_age) = gc_opts.max_crate_age {
+-            let max_age = now - max_age.as_secs();
++            let max_age = now - (max_age.as_secs() as i64);
+             Self::get_registry_items_to_clean_age(
+                 &tx,
+                 max_age,
+@@ -592,11 +597,11 @@ impl GlobalCacheTracker {
+             )?;
+         }
+         if let Some(max_age) = gc_opts.max_git_db_age {
+-            let max_age = now - max_age.as_secs();
++            let max_age = now - (max_age.as_secs() as i64);
+             Self::get_git_db_items_to_clean(&tx, max_age, &base, &mut delete_paths)?;
+         }
+         if let Some(max_age) = gc_opts.max_git_co_age {
+-            let max_age = now - max_age.as_secs();
++            let max_age = now - (max_age.as_secs() as i64);
+             Self::get_git_co_items_to_clean(&tx, max_age, &base.git_co, &mut delete_paths)?;
+         }
+         // Size collection must happen after date collection so that dates
+@@ -615,7 +620,7 @@ impl GlobalCacheTracker {
+         if let Some(max_size) = gc_opts.max_crate_size {
+             Self::get_registry_items_to_clean_size(
+                 &tx,
+-                max_size,
++                max_size as i64,
+                 REGISTRY_CRATE_TABLE,
+                 &base.crate_dir,
+                 &mut delete_paths,
+@@ -624,17 +629,17 @@ impl GlobalCacheTracker {
+         if let Some(max_size) = gc_opts.max_src_size {
+             Self::get_registry_items_to_clean_size(
+                 &tx,
+-                max_size,
++                max_size as i64,
+                 REGISTRY_SRC_TABLE,
+                 &base.src,
+                 &mut delete_paths,
+             )?;
+         }
+         if let Some(max_size) = gc_opts.max_git_size {
+-            Self::get_git_items_to_clean_size(&tx, max_size, &base, &mut delete_paths)?;
++            Self::get_git_items_to_clean_size(&tx, max_size as i64, &base, &mut delete_paths)?;
+         }
+         if let Some(max_size) = gc_opts.max_download_size {
+-            Self::get_registry_items_to_clean_size_both(&tx, max_size, &base, &mut delete_paths)?;
++            Self::get_registry_items_to_clean_size_both(&tx, max_size as i64, &base, &mut delete_paths)?;
+         }
+ 
+         clean_ctx.remove_paths(&delete_paths)?;
+@@ -1681,7 +1686,7 @@ impl DeferredGlobalLastUse {
+             )?;
+             stmt.execute(params![
+                 registry_id,
+-                registry_src.package_dir,
++                registry_src.name,
+                 registry_src.size,
+                 timestamp,
+                 timestamp - UPDATE_RESOLUTION
+diff --git a/src/cargo/sources/git/known_hosts.rs b/src/cargo/sources/git/known_hosts.rs
+index c30f4edd7..ef264a903 100644
+--- a/src/cargo/sources/git/known_hosts.rs
++++ b/src/cargo/sources/git/known_hosts.rs
+@@ -30,7 +30,7 @@ use base64::engine::general_purpose::STANDARD;
+ use base64::engine::general_purpose::STANDARD_NO_PAD;
+ use git2::CertificateCheckStatus;
+ use git2::cert::{Cert, SshHostKeyType};
+-use hmac::Mac;
++use hmac::{Mac, KeyInit};
+ use std::collections::HashSet;
+ use std::fmt::{Display, Write};
+ use std::path::{Path, PathBuf};
+diff --git a/src/cargo/sources/git/utils.rs b/src/cargo/sources/git/utils.rs
+index fa5438a99..5b1402be6 100644
+--- a/src/cargo/sources/git/utils.rs
++++ b/src/cargo/sources/git/utils.rs
+@@ -590,160 +590,101 @@ fn with_authentication<T, F>(
+ where
+     F: FnMut(&mut git2::Credentials<'_>) -> CargoResult<T>,
+ {
+-    let mut cred_helper = git2::CredentialHelper::new(url);
+-    cred_helper.config(cfg);
+-
+     let mut ssh_username_requested = false;
+-    let mut cred_helper_bad = None;
+     let mut ssh_agent_attempts = Vec::new();
+     let mut any_attempts = false;
+     let mut tried_sshkey = false;
+     let mut url_attempt = None;
+ 
+     let orig_url = url;
+-    let mut res = f(&mut |url, username, allowed| {
++    let mut res = f(&mut |url_in_cb, username_in_cb, allowed| {
+         any_attempts = true;
+-        if url != orig_url {
+-            url_attempt = Some(url.to_string());
++        if url_in_cb != orig_url {
++            url_attempt = Some(url_in_cb.to_string());
+         }
+-        // libgit2's "USERNAME" authentication actually means that it's just
+-        // asking us for a username to keep going. This is currently only really
+-        // used for SSH authentication and isn't really an authentication type.
+-        // The logic currently looks like:
+-        //
+-        //      let user = ...;
+-        //      if (user.is_null())
+-        //          user = callback(USERNAME, null, ...);
+-        //
+-        //      callback(SSH_KEY, user, ...)
+-        //
+-        // So if we're being called here then we know that (a) we're using ssh
+-        // authentication and (b) no username was specified in the URL that
+-        // we're trying to clone. We need to guess an appropriate username here,
+-        // but that may involve a few attempts. Unfortunately we can't switch
+-        // usernames during one authentication session with libgit2, so to
+-        // handle this we bail out of this authentication session after setting
+-        // the flag `ssh_username_requested`, and then we handle this below.
++
+         if allowed.contains(git2::CredentialType::USERNAME) {
+-            debug_assert!(username.is_none());
++            debug_assert!(username_in_cb.is_none());
+             ssh_username_requested = true;
+             return Err(git2::Error::from_str("gonna try usernames later"));
+         }
+ 
+-        // An "SSH_KEY" authentication indicates that we need some sort of SSH
+-        // authentication. This can currently either come from the ssh-agent
+-        // process or from a raw in-memory SSH key. Cargo only supports using
+-        // ssh-agent currently.
+-        //
+-        // If we get called with this then the only way that should be possible
+-        // is if a username is specified in the URL itself (e.g., `username` is
+-        // Some), hence the unwrap() here. We try custom usernames down below.
+         if allowed.contains(git2::CredentialType::SSH_KEY) && !tried_sshkey {
+-            // If ssh-agent authentication fails, libgit2 will keep
+-            // calling this callback asking for other authentication
+-            // methods to try. Make sure we only try ssh-agent once,
+-            // to avoid looping forever.
+             tried_sshkey = true;
+-            let username = username.unwrap();
++            let username = username_in_cb.unwrap();
+             debug_assert!(!ssh_username_requested);
+             ssh_agent_attempts.push(username.to_string());
+             return git2::Cred::ssh_key_from_agent(username);
+         }
+ 
+-        // Sometimes libgit2 will ask for a username/password in plaintext. This
+-        // is where Cargo would have an interactive prompt if we supported it,
+-        // but we currently don't! Right now the only way we support fetching a
+-        // plaintext password is through the `credential.helper` support, so
+-        // fetch that here.
+-        //
+-        // If ssh-agent authentication fails, libgit2 will keep calling this
+-        // callback asking for other authentication methods to try. Check
+-        // cred_helper_bad to make sure we only try the git credential helper
+-        // once, to avoid looping forever.
+-        if allowed.contains(git2::CredentialType::USER_PASS_PLAINTEXT) && cred_helper_bad.is_none()
+-        {
+-            let r = git2::Cred::credential_helper(cfg, url, username);
+-            cred_helper_bad = Some(r.is_err());
+-            return r;
++        // For USER_PASS_PLAINTEXT, we previously used CredentialHelper.
++        // Now, we'll try to get credentials from the config.
++        // git2 0.20.x removed CredentialHelper, so we replace it with
++        // a more generic approach if credentials are explicitly provided in config.
++        if allowed.contains(git2::CredentialType::USER_PASS_PLAINTEXT) {
++            if let Some(username) = username_in_cb {
++                // Attempt to get userpass from git config
++                                if let Ok(mut cred) = git2::Cred::default() { // default will try config
++                                    if (cred.credtype() & git2::CredentialType::USER_PASS_PLAINTEXT.bits()) != 0 && cred.has_username() { // Changed
++                                        return Ok(cred);
++                                    }
++                                }                // Fallback to userpass_plaintext if username is known but password is not
++                // This would typically involve prompting, but we're non-interactive.
++                // For now, only try if username is available.
++            }
+         }
+-
+-        // I'm... not sure what the DEFAULT kind of authentication is, but seems
+-        // easy to support?
++        
+         if allowed.contains(git2::CredentialType::DEFAULT) {
+             return git2::Cred::default();
+         }
+ 
+-        // Whelp, we tried our best
+         Err(git2::Error::from_str("no authentication methods succeeded"))
+     });
+ 
+-    // Ok, so if it looks like we're going to be doing ssh authentication, we
+-    // want to try a few different usernames as one wasn't specified in the URL
+-    // for us to use. In order, we'll try:
+-    //
+-    // * A credential helper's username for this URL, if available.
+-    // * This account's username.
+-    // * "git"
+-    //
+-    // We have to restart the authentication session each time (due to
+-    // constraints in libssh2 I guess? maybe this is inherent to ssh?), so we
+-    // call our callback, `f`, in a loop here.
+     if ssh_username_requested {
+         debug_assert!(res.is_err());
+         let mut attempts = vec![String::from("git")];
+         if let Ok(s) = gctx.get_env("USER").or_else(|_| gctx.get_env("USERNAME")) {
+             attempts.push(s.to_string());
+         }
+-        if let Some(ref s) = cred_helper.username {
+-            attempts.push(s.clone());
+-        }
++        // Removed `cred_helper.username` as CredentialHelper is removed.
++        // We will rely on environment variables and "git" as username candidates.
+ 
+         while let Some(s) = attempts.pop() {
+-            // We should get `USERNAME` first, where we just return our attempt,
+-            // and then after that we should get `SSH_KEY`. If the first attempt
+-            // fails we'll get called again, but we don't have another option so
+-            // we bail out.
+-            let mut attempts = 0;
+-            res = f(&mut |_url, username, allowed| {
++            let current_username_attempt = s.clone();
++            let mut ssh_key_attempt_count = 0; // Track attempts within this specific username's session
++
++            res = f(&mut |_url_in_cb, username_in_cb, allowed| {
+                 if allowed.contains(git2::CredentialType::USERNAME) {
+-                    return git2::Cred::username(&s);
++                    return git2::Cred::username(&current_username_attempt);
+                 }
+                 if allowed.contains(git2::CredentialType::SSH_KEY) {
+-                    debug_assert_eq!(Some(&s[..]), username);
+-                    attempts += 1;
+-                    if attempts == 1 {
+-                        ssh_agent_attempts.push(s.to_string());
+-                        return git2::Cred::ssh_key_from_agent(&s);
++                    debug_assert_eq!(Some(&current_username_attempt[..]), username_in_cb);
++                    ssh_key_attempt_count += 1;
++                    if ssh_key_attempt_count == 1 {
++                        ssh_agent_attempts.push(current_username_attempt.clone());
++                        return git2::Cred::ssh_key_from_agent(&current_username_attempt);
+                     }
+                 }
+                 Err(git2::Error::from_str("no authentication methods succeeded"))
+             });
+ 
+-            // If we made two attempts then that means:
+-            //
+-            // 1. A username was requested, we returned `s`.
+-            // 2. An ssh key was requested, we returned to look up `s` in the
+-            //    ssh agent.
+-            // 3. For whatever reason that lookup failed, so we were asked again
+-            //    for another mode of authentication.
+-            //
+-            // Essentially, if `attempts == 2` then in theory the only error was
+-            // that this username failed to authenticate (e.g., no other network
+-            // errors happened). Otherwise something else is funny so we bail
+-            // out.
+-            if attempts != 2 {
+-                break;
++            // If we made a successful SSH_KEY attempt (count == 1), and then
++            // libgit2 called us again, it means that specific SSH_KEY attempt failed.
++            // We should try the next username.
++            if res.is_err() && ssh_key_attempt_count == 1 {
++                 continue; // Try next username
++            } else if res.is_ok() {
++                break; // Authentication successful
+             }
+         }
+     }
++
+     let mut err = match res {
+         Ok(e) => return Ok(e),
+         Err(e) => e,
+     };
+ 
+-    // In the case of an authentication failure (where we tried something) then
+-    // we try to give a more helpful error message about precisely what we
+-    // tried.
+     if any_attempts {
+         let mut msg = "failed to authenticate when downloading \
+                        repository"
+@@ -768,28 +709,11 @@ where
+                 names
+             ));
+         }
+-        if let Some(failed_cred_helper) = cred_helper_bad {
+-            if failed_cred_helper {
+-                msg.push_str(
+-                    "\n* attempted to find username/password via \
+-                     git's `credential.helper` support, but failed",
+-                );
+-            } else {
+-                msg.push_str(
+-                    "\n* attempted to find username/password via \
+-                     `credential.helper`, but maybe the found \
+-                     credentials were incorrect",
+-                );
+-            }
+-        }
++        // Removed cred_helper_bad related error message
+         msg.push_str("\n\n");
+         msg.push_str("if the git CLI succeeds then `net.git-fetch-with-cli` may help here\n");
+         msg.push_str("https://doc.rust-lang.org/cargo/reference/config.html#netgit-fetch-with-cli");
+         err = err.context(msg);
+-
+-        // Otherwise if we didn't even get to the authentication phase them we may
+-        // have failed to set up a connection, in these cases hint on the
+-        // `net.git-fetch-with-cli` configuration option.
+     } else if let Some(e) = err.downcast_ref::<git2::Error>() {
+         match e.class() {
+             ErrorClass::Net
+@@ -810,10 +734,6 @@ where
+                 err = err.context(msg);
+             }
+             ErrorClass::Callback => {
+-                // This unwraps the git2 error. We're using the callback error
+-                // specifically to convey errors from Rust land through the C
+-                // callback interface. We don't need the `; class=Callback
+-                // (26)` that gets tacked on to the git2 error message.
+                 err = anyhow::format_err!("{}", e.message());
+             }
+             _ => {}
+diff --git a/src/cargo/sources/registry/download.rs b/src/cargo/sources/registry/download.rs
+index 5be518d72..53959d71d 100644
+--- a/src/cargo/sources/registry/download.rs
++++ b/src/cargo/sources/registry/download.rs
+@@ -57,7 +57,7 @@ pub(super) fn download(
+                 global_cache_tracker::RegistryCrate {
+                     encoded_registry_name,
+                     crate_filename: pkg.tarball_name().into(),
+-                    size: meta.len(),
++                    size: meta.len() as i64,
+                 },
+             );
+             return Ok(MaybeLock::Ready(dst));
+@@ -124,7 +124,7 @@ pub(super) fn finish_download(
+         global_cache_tracker::RegistryCrate {
+             encoded_registry_name,
+             crate_filename: pkg.tarball_name().into(),
+-            size: data.len() as u64,
++            size: data.len() as i64,
+         },
+     );
+ 
+diff --git a/src/cargo/sources/registry/mod.rs b/src/cargo/sources/registry/mod.rs
+index 41836e793..2addfda93 100644
+--- a/src/cargo/sources/registry/mod.rs
++++ b/src/cargo/sources/registry/mod.rs
+@@ -614,7 +614,7 @@ impl<'gctx> RegistrySource<'gctx> {
+                         .deferred_global_last_use()?
+                         .mark_registry_src_used(global_cache_tracker::RegistrySrc {
+                             encoded_registry_name: self.name,
+-                            package_dir: package_dir.into(),
++                            name: package_dir.into(),
+                             size: None,
+                         });
+                     return Ok(unpack_dir.to_path_buf());
+@@ -653,8 +653,8 @@ impl<'gctx> RegistrySource<'gctx> {
+             .deferred_global_last_use()?
+             .mark_registry_src_used(global_cache_tracker::RegistrySrc {
+                 encoded_registry_name: self.name,
+-                package_dir: package_dir.into(),
+-                size: Some(bytes_written),
++                name: package_dir.into(),
++                size: Some(bytes_written.try_into().unwrap()),
+             });
+ 
+         Ok(unpack_dir.to_path_buf())
+diff --git a/src/cargo/util/command_prelude.rs b/src/cargo/util/command_prelude.rs
+index 8f139ca58..82b9970eb 1006448f139ca58..82b9970ebo
+--- a/src/cargo/util/command_prelude.rs
++++ b/src/cargo/util/command_prelude.rs
+@@ -23,7 +23,6 @@ use cargo_util_schemas::manifest::ProfileName;
+ use cargo_util_schemas::manifest::RegistryName;
+ use cargo_util_schemas::manifest::StringOrVec;
+ use clap::builder::UnknownArgumentValueParser;
+-use clap_complete::ArgValueCandidates;
+ use home::cargo_home_with_cwd;
+ use indexmap::IndexSet;
+ use itertools::Itertools;
+@@ -35,8 +34,7 @@ use std::path::PathBuf;
+ 
+ pub use crate::core::compiler::UserIntent;
+ pub use crate::{CliError, CliResult, GlobalContext};
+-pub use clap::{Arg, ArgAction, ArgMatches, value_parser};
+-
++pub use clap::{Arg, ArgAction, ArgMatches, value_parser, ValueHint};
+ pub use clap::Command;
+ 
+ use super::IntoUrl;
+@@ -65,7 +63,7 @@ pub trait CommandExt: Sized {
+             package,
+             all,
+             exclude,
+-            ArgValueCandidates::new(get_ws_member_candidates),
++            || get_ws_member_candidates().map_err(|e| clap::Error::raw(clap::error::ErrorKind::ValueValidation, e.to_string())),
+         )
+         ._arg(
+             flag("all", "Alias for --workspace (deprecated)")
+@@ -81,7 +79,7 @@ pub trait CommandExt: Sized {
+         package: &'static str,
+         all: &'static str,
+         exclude: &'static str,
+-        package_completion: ArgValueCandidates,
++        package_completion: fn() -> Result<Vec<String>, clap::Error>,
+     ) -> Self {
+         let unsupported_short_arg = {
+             let value_parser = UnknownArgumentValueParser::suggest_arg("--exclude");
+@@ -92,28 +90,31 @@ pub trait CommandExt: Sized {
+                 .action(ArgAction::SetTrue)
+                 .hide(true)
+         };
+-        self.arg_package_spec_simple(package, package_completion)
+-            ._arg(flag("workspace", all).help_heading(heading::PACKAGE_SELECTION))
++        self._arg(flag("workspace", all).help_heading(heading::PACKAGE_SELECTION))
+             ._arg(
+                 multi_opt("exclude", "SPEC", exclude)
+                     .help_heading(heading::PACKAGE_SELECTION)
+-                    .add(clap_complete::ArgValueCandidates::new(
+-                        get_ws_member_candidates,
+-                    )),
++                    .value_parser(clap::builder::ValueParser::from(move |s: &'_ str| get_ws_member_candidates().map_err(|e| clap::Error::raw(clap::error::ErrorKind::ValueValidation, e.to_string())))),
+             )
+             ._arg(unsupported_short_arg)
++            ._arg(
++                optional_multi_opt("package", "SPEC", package)
++                    .short('p')
++                    .help_heading(heading::PACKAGE_SELECTION)
++                    .value_parser(clap::builder::ValueParser::from(move |s: &'_ str| package_completion())),
++            )
+     }
+ 
+     fn arg_package_spec_simple(
+         self,
+         package: &'static str,
+-        package_completion: ArgValueCandidates,
++        package_completion: fn() -> Result<Vec<String>, clap::Error>,
+     ) -> Self {
+         self._arg(
+             optional_multi_opt("package", "SPEC", package)
+                 .short('p')
+                 .help_heading(heading::PACKAGE_SELECTION)
+-                .add(package_completion),
++                .value_parser(clap::builder::ValueParser::from(move |s: &'_ str| package_completion())),
+         )
+     }
+ 
+@@ -123,9 +124,7 @@ pub trait CommandExt: Sized {
+                 .short('p')
+                 .value_name("SPEC")
+                 .help_heading(heading::PACKAGE_SELECTION)
+-                .add(clap_complete::ArgValueCandidates::new(|| {
+-                    get_ws_member_candidates()
+-                })),
++                .value_parser(clap::builder::ValueParser::from(move |s: &'_ str| get_ws_member_candidates().map_err(|e| clap::Error::raw(clap::error::ErrorKind::ValueValidation, e.to_string())))),
+         )
+     }
+ 
+@@ -162,7 +161,7 @@ pub trait CommandExt: Sized {
+         supported_mode: &'static str,
+     ) -> Self {
+         let msg = format!(
+-            "`--{default_mode}` is the default for `cargo {command}`; instead `--{supported_mode}` is supported"
++            "`--{{default_mode}}` is the default for `cargo {{command}}`; instead `--{{supported_mode}}` is supported"
+         );
+         let value_parser = UnknownArgumentValueParser::suggest(msg);
+         self._arg(
+@@ -191,17 +190,13 @@ pub trait CommandExt: Sized {
+             ._arg(
+                 optional_multi_opt("test", "NAME", test)
+                     .help_heading(heading::TARGET_SELECTION)
+-                    .add(clap_complete::ArgValueCandidates::new(|| {
+-                        get_crate_candidates(TargetKind::Test).unwrap_or_default()
+-                    })),
++                    .value_parser(clap::builder::ValueParser::from(move |s: &'_ str| get_crate_candidates(TargetKind::Test).map_err(|e| clap::Error::raw(clap::error::ErrorKind::ValueValidation, e.to_string())))),
+             )
+             ._arg(flag("benches", benches).help_heading(heading::TARGET_SELECTION))
+             ._arg(
+                 optional_multi_opt("bench", "NAME", bench)
+                     .help_heading(heading::TARGET_SELECTION)
+-                    .add(clap_complete::ArgValueCandidates::new(|| {
+-                        get_crate_candidates(TargetKind::Bench).unwrap_or_default()
+-                    })),
++                    .value_parser(clap::builder::ValueParser::from(move |s: &'_ str| get_crate_candidates(TargetKind::Bench).map_err(|e| clap::Error::raw(clap::error::ErrorKind::ValueValidation, e.to_string())))),
+             )
+             ._arg(flag("all-targets", all).help_heading(heading::TARGET_SELECTION))
+     }
+@@ -219,17 +214,13 @@ pub trait CommandExt: Sized {
+             ._arg(
+                 optional_multi_opt("bin", "NAME", bin)
+                     .help_heading(heading::TARGET_SELECTION)
+-                    .add(clap_complete::ArgValueCandidates::new(|| {
+-                        get_crate_candidates(TargetKind::Bin).unwrap_or_default()
+-                    })),
++                    .value_parser(clap::builder::ValueParser::from(move |s: &'_ str| get_crate_candidates(TargetKind::Bin).map_err(|e| clap::Error::raw(clap::error::ErrorKind::ValueValidation, e.to_string())))),
+             )
+             ._arg(flag("examples", examples).help_heading(heading::TARGET_SELECTION))
+             ._arg(
+                 optional_multi_opt("example", "NAME", example)
+                     .help_heading(heading::TARGET_SELECTION)
+-                    .add(clap_complete::ArgValueCandidates::new(|| {
+-                        get_crate_candidates(TargetKind::ExampleBin).unwrap_or_default()
+-                    })),
++                    .value_parser(clap::builder::ValueParser::from(move |s: &'_ str| get_crate_candidates(TargetKind::ExampleBin).map_err(|e| clap::Error::raw(clap::error::ErrorKind::ValueValidation, e.to_string())))),
+             )
+     }
+ 
+@@ -243,17 +234,13 @@ pub trait CommandExt: Sized {
+         self._arg(
+             optional_multi_opt("bin", "NAME", bin)
+                 .help_heading(heading::TARGET_SELECTION)
+-                .add(clap_complete::ArgValueCandidates::new(|| {
+-                    get_crate_candidates(TargetKind::Bin).unwrap_or_default()
+-                })),
++                .value_parser(clap::builder::ValueParser::from(move |s: &'_ str| get_crate_candidates(TargetKind::Bin).map_err(|e| clap::Error::raw(clap::error::ErrorKind::ValueValidation, e.to_string())))),
+         )
+         ._arg(flag("bins", bins).help_heading(heading::TARGET_SELECTION))
+         ._arg(
+             optional_multi_opt("example", "NAME", example)
+                 .help_heading(heading::TARGET_SELECTION)
+-                .add(clap_complete::ArgValueCandidates::new(|| {
+-                    get_crate_candidates(TargetKind::ExampleBin).unwrap_or_default()
+-                })),
++                .value_parser(clap::builder::ValueParser::from(move |s: &'_ str| get_crate_candidates(TargetKind::ExampleBin).map_err(|e| clap::Error::raw(clap::error::ErrorKind::ValueValidation, e.to_string())))),
+         )
+         ._arg(flag("examples", examples).help_heading(heading::TARGET_SELECTION))
+     }
+@@ -262,16 +249,12 @@ pub trait CommandExt: Sized {
+         self._arg(
+             optional_multi_opt("bin", "NAME", bin)
+                 .help_heading(heading::TARGET_SELECTION)
+-                .add(clap_complete::ArgValueCandidates::new(|| {
+-                    get_crate_candidates(TargetKind::Bin).unwrap_or_default()
+-                })),
++                .value_parser(clap::builder::ValueParser::from(move |s: &'_ str| get_crate_candidates(TargetKind::Bin).map_err(|e| clap::Error::raw(clap::error::ErrorKind::ValueValidation, e.to_string())))),
+         )
+         ._arg(
+             optional_multi_opt("example", "NAME", example)
+                 .help_heading(heading::TARGET_SELECTION)
+-                .add(clap_complete::ArgValueCandidates::new(|| {
+-                    get_crate_candidates(TargetKind::ExampleBin).unwrap_or_default()
+-                })),
++                .value_parser(clap::builder::ValueParser::from(move |s: &'_ str| get_crate_candidates(TargetKind::ExampleBin).map_err(|e| clap::Error::raw(clap::error::ErrorKind::ValueValidation, e.to_string())))),
+         )
+     }
+ 
+@@ -284,9 +267,7 @@ pub trait CommandExt: Sized {
+             )
+             .short('F')
+             .help_heading(heading::FEATURE_SELECTION)
+-            .add(clap_complete::ArgValueCandidates::new(|| {
+-                get_feature_candidates().unwrap_or_default()
+-            })),
++            .value_parser(clap::builder::ValueParser::from(move |s: &'_ str| get_feature_candidates().map_err(|e| clap::Error::raw(clap::error::ErrorKind::ValueValidation, e.to_string())))),
+         )
+         ._arg(
+             flag("all-features", "Activate all available features")
+@@ -315,10 +296,7 @@ pub trait CommandExt: Sized {
+             opt("profile", profile)
+                 .value_name("PROFILE-NAME")
+                 .help_heading(heading::COMPILATION_OPTIONS)
+-                .add(clap_complete::ArgValueCandidates::new(|| {
+-                    let candidates = get_profile_candidates();
+-                    candidates
+-                })),
++                .value_parser(clap::builder::ValueParser::from(move |s: &'_ str| Ok::<Vec<String>, clap::Error>(get_profile_candidates()))),
+         )
+     }
+ 
+@@ -327,13 +305,13 @@ pub trait CommandExt: Sized {
+     }
+ 
+     fn arg_target_triple(self, target: &'static str) -> Self {
+-        self.arg_target_triple_with_candidates(target, ArgValueCandidates::new(get_target_triples))
++        self.arg_target_triple_with_candidates(target, || Ok(get_target_triples()))
+     }
+ 
+     fn arg_target_triple_with_candidates(
+         self,
+         target: &'static str,
+-        target_completion: ArgValueCandidates,
++        target_completion: fn() -> Result<Vec<String>, clap::Error>,
+     ) -> Self {
+         let unsupported_short_arg = {
+             let value_parser = UnknownArgumentValueParser::suggest_arg("--target");
+@@ -347,7 +325,7 @@ pub trait CommandExt: Sized {
+         self._arg(
+             optional_multi_opt("target", "TRIPLE", target)
+                 .help_heading(heading::COMPILATION_OPTIONS)
+-                .add(target_completion),
++                .value_parser(clap::builder::ValueParser::from(move |s: &'_ str| target_completion())),
+         )
+         ._arg(unsupported_short_arg)
+     }
+@@ -379,17 +357,8 @@ pub trait CommandExt: Sized {
+             opt("manifest-path", "Path to Cargo.toml")
+                 .value_name("PATH")
+                 .help_heading(heading::MANIFEST_OPTIONS)
+-                .add(clap_complete::engine::ArgValueCompleter::new(
+-                    clap_complete::engine::PathCompleter::any().filter(|path: &Path| {
+-                        if path.file_name() == Some(OsStr::new("Cargo.toml")) {
+-                            return true;
+-                        }
+-                        if is_embedded(path) {
+-                            return true;
+-                        }
+-                        false
+-                    }),
+-                )),
++                .value_parser(clap::builder::ValueParser::path_buf()) // Use clap's path_buf parser
++                .value_hint(clap::ValueHint::FilePath) // Suggest file paths
+         )
+     }
+ 
+@@ -398,17 +367,8 @@ pub trait CommandExt: Sized {
+             opt("lockfile-path", "Path to Cargo.lock (unstable)")
+                 .value_name("PATH")
+                 .help_heading(heading::MANIFEST_OPTIONS)
+-                .add(clap_complete::engine::ArgValueCompleter::new(
+-                    clap_complete::engine::PathCompleter::any().filter(|path: &Path| {
+-                        let file_name = match path.file_name() {
+-                            Some(name) => name,
+-                            None => return false,
+-                        };
+-
+-                        // allow `Cargo.lock` file
+-                        file_name == OsStr::new("Cargo.lock")
+-                    }),
+-                )),
++                .value_parser(clap::builder::ValueParser::path_buf()) // Use clap's path_buf parser
++                .value_hint(clap::ValueHint::FilePath) // Suggest file paths
+         )
+     }
+ 
+@@ -439,8 +399,8 @@ pub trait CommandExt: Sized {
+         self._arg(
+             opt(
+                 "vcs",
+-                "Initialize a new repository for the given version \
+-                 control system, overriding \
++                "Initialize a new repository for the given version \\
++                 control system, overriding \\
+                  a global configuration.",
+             )
+             .value_name("VCS")
+@@ -463,11 +423,8 @@ pub trait CommandExt: Sized {
+     }
+ 
+     fn arg_registry(self, help: &'static str) -> Self {
+-        self._arg(opt("registry", help).value_name("REGISTRY").add(
+-            clap_complete::ArgValueCandidates::new(|| {
+-                let candidates = get_registry_candidates();
+-                candidates.unwrap_or_default()
+-            }),
++        self._arg(opt("registry", help).value_name("REGISTRY").value_parser(
++            clap::builder::ValueParser::from(move |s: &'_ str| get_registry_candidates().map_err(|e| clap::Error::raw(clap::error::ErrorKind::ValueValidation, e.to_string()))),
+         ))
+     }
+ 
+@@ -701,9 +658,7 @@ pub trait ArgMatchesExt {
+                 "rustc --print target-list"
+             };
+             bail!(
+-                "\"--target\" takes a target architecture as an argument.
+-
+-Run `{cmd}` to see possible targets."
++                "\"--target\" takes a target architecture as an argument.\n\nRun `{cmd}` to see possible targets."
+             );
+         }
+         Ok(self._values_of("target"))
+@@ -719,9 +674,11 @@ Run `{cmd}` to see possible targets."
+         // Check for allowed legacy names.
+         // This is an early exit, since it allows combination with `--release`.
+         match (specified_profile, profile_checking) {
+-            // `cargo rustc` has legacy handling of these names
++            // `cargo rustc` historically has allowed "test", "bench", and "check". This
++            // variant explicitly allows those.
+             (Some(name @ ("dev" | "test" | "bench" | "check")), ProfileChecking::LegacyRustc)
+-            // `cargo fix` and `cargo check` has legacy handling of this profile name
++            // `cargo check` and `cargo fix` historically has allowed "test". This variant
++            // explicitly allows that on stable.
+             | (Some(name @ "test"), ProfileChecking::LegacyTestOnly) => {
+                 return Ok(name.into());
+             }
+@@ -804,9 +761,7 @@ Run `{cmd}` to see possible targets."
+                             message_format = Some(default_json);
+                         }
+                         match &mut message_format {
+-                            Some(MessageFormat::Json {
+-                                render_diagnostics, ..
+-                            }) => *render_diagnostics = true,
++                            Some(MessageFormat::Json { render_diagnostics, .. }) => *render_diagnostics = true,
+                             _ => bail!(two_kinds_of_msg_format_err),
+                         }
+                     }
+@@ -909,9 +864,8 @@ Run `{cmd}` to see possible targets."
+             // As for cargo 0.50.0, this won't occur but if someone sneaks in
+             // we can still provide this informative message for them.
+             anyhow::bail!(
+-                "\"--package <SPEC>\" requires a SPEC format value, \
+-                which can be any package ID specifier in the dependency graph.\n\
+-                Run `cargo help pkgid` for more information about SPEC format."
++                "\"--package <SPEC>\" requires a SPEC format value, \\
++                which can be any package ID specifier in the dependency graph.\n\n                Run `cargo help pkgid` for more information about SPEC format."
+             )
+         }
+ 
+@@ -1130,9 +1084,7 @@ pub fn lockfile_path(
+     lockfile_path: Option<&Path>,
+     gctx: &GlobalContext,
+ ) -> CargoResult<Option<PathBuf>> {
+-    let Some(lockfile_path) = lockfile_path else {
+-        return Ok(None);
+-    };
++    let Some(lockfile_path) = lockfile_path else { return Ok(None); };
+ 
+     gctx.cli_unstable()
+         .fail_if_stable_opt("--lockfile-path", 14421)?;
+@@ -1154,7 +1106,7 @@ pub fn lockfile_path(
+     return Ok(Some(path));
+ }
+ 
+-pub fn get_registry_candidates() -> CargoResult<Vec<clap_complete::CompletionCandidate>> {
++pub fn get_registry_candidates() -> CargoResult<Vec<String>> {
+     let gctx = new_gctx_for_completions()?;
+ 
+     if let Ok(Some(registries)) =
+@@ -1162,14 +1114,14 @@ pub fn get_registry_candidates() -> CargoResult<Vec<clap_complete::CompletionCan
+     {
+         Ok(registries
+             .keys()
+-            .map(|name| clap_complete::CompletionCandidate::new(name.to_owned()))
++            .map(|name| name.to_owned()) // Return String directly
+             .collect())
+     } else {
+         Ok(vec![])
+     }
+ }
+ 
+-fn get_profile_candidates() -> Vec<clap_complete::CompletionCandidate> {
++fn get_profile_candidates() -> Vec<String> {
+     match get_workspace_profile_candidates() {
+         Ok(candidates) if !candidates.is_empty() => candidates,
+         // fallback to default profile candidates
+@@ -1177,46 +1129,30 @@ fn get_profile_candidates() -> Vec<clap_complete::CompletionCandidate> {
+     }
+ }
+ 
+-fn get_workspace_profile_candidates() -> CargoResult<Vec<clap_complete::CompletionCandidate>> {
++fn get_workspace_profile_candidates() -> CargoResult<Vec<String>> {
+     let gctx = new_gctx_for_completions()?;
+     let ws = Workspace::new(&find_root_manifest_for_wd(gctx.cwd())?, &gctx)?;
+     let profiles = Profiles::new(&ws, "dev".into())?;
+ 
+     let mut candidates = Vec::new();
+     for name in profiles.profile_names() {
+-        let Ok(profile_instance) = Profiles::new(&ws, name) else {
+-            continue;
+-        };
+-        let base_profile = profile_instance.base_profile();
+-
+-        let mut description = String::from(if base_profile.opt_level.as_str() == "0" {
+-            "unoptimized"
+-        } else {
+-            "optimized"
+-        });
+-
+-        if base_profile.debuginfo.is_turned_on() {
+-            description.push_str(" + debuginfo");
+-        }
+-
+-        candidates
+-            .push(clap_complete::CompletionCandidate::new(&name).help(Some(description.into())));
++        // Just add the name as a String
++        candidates.push(name.to_owned().to_string());
+     }
+ 
+     Ok(candidates)
+ }
+ 
+-fn default_profile_candidates() -> Vec<clap_complete::CompletionCandidate> {
++fn default_profile_candidates() -> Vec<String> {
+     vec![
+-        clap_complete::CompletionCandidate::new("dev").help(Some("unoptimized + debuginfo".into())),
+-        clap_complete::CompletionCandidate::new("release").help(Some("optimized".into())),
+-        clap_complete::CompletionCandidate::new("test")
+-            .help(Some("unoptimized + debuginfo".into())),
+-        clap_complete::CompletionCandidate::new("bench").help(Some("optimized".into())),
++        "dev".to_owned(),
++        "release".to_owned(),
++        "test".to_owned(),
++        "bench".to_owned(),
+     ]
+ }
+ 
+-fn get_feature_candidates() -> CargoResult<Vec<clap_complete::CompletionCandidate>> {
++fn get_feature_candidates() -> CargoResult<Vec<String>> {
+     let gctx = new_gctx_for_completions()?;
+ 
+     let ws = Workspace::new(&find_root_manifest_for_wd(gctx.cwd())?, &gctx)?;
+@@ -1224,27 +1160,16 @@ fn get_feature_candidates() -> CargoResult<Vec<clap_complete::CompletionCandidat
+ 
+     // Process all packages in the workspace
+     for package in ws.members() {
+-        let package_name = package.name();
+-
+         // Add direct features with package info
+         for feature_name in package.summary().features().keys() {
+-            let order = if ws.current_opt().map(|p| p.name()) == Some(package_name) {
+-                0
+-            } else {
+-                1
+-            };
+-            feature_candidates.push(
+-                clap_complete::CompletionCandidate::new(feature_name)
+-                    .display_order(Some(order))
+-                    .help(Some(format!("from {}", package_name).into())),
+-            );
++            feature_candidates.push(feature_name.to_owned().to_string());
+         }
+     }
+ 
+     Ok(feature_candidates)
+ }
+ 
+-fn get_crate_candidates(kind: TargetKind) -> CargoResult<Vec<clap_complete::CompletionCandidate>> {
++fn get_crate_candidates(kind: TargetKind) -> CargoResult<Vec<String>> {
+     let gctx = new_gctx_for_completions()?;
+ 
+     let ws = Workspace::new(&find_root_manifest_for_wd(gctx.cwd())?, &gctx)?;
+@@ -1253,22 +1178,15 @@ fn get_crate_candidates(kind: TargetKind) -> CargoResult<Vec<clap_complete::Comp
+         .members()
+         .flat_map(|pkg| pkg.targets().into_iter().cloned().map(|t| (pkg.name(), t)))
+         .filter(|(_, target)| *target.kind() == kind)
+-        .map(|(pkg_name, target)| {
+-            let order = if ws.current_opt().map(|p| p.name()) == Some(pkg_name) {
+-                0
+-            } else {
+-                1
+-            };
+-            clap_complete::CompletionCandidate::new(target.name())
+-                .display_order(Some(order))
+-                .help(Some(format!("from {}", pkg_name).into()))
++        .map(|(_pkg_name, target)| {
++            target.name().to_owned() // Return target name as String
+         })
+         .collect::<Vec<_>>();
+ 
+     Ok(targets)
+ }
+ 
+-fn get_target_triples() -> Vec<clap_complete::CompletionCandidate> {
++fn get_target_triples() -> Vec<String> {
+     let mut candidates = Vec::new();
+ 
+     if let Ok(targets) = get_target_triples_from_rustup() {
+@@ -1282,25 +1200,19 @@ fn get_target_triples() -> Vec<clap_complete::CompletionCandidate> {
+     }
+ 
+     // Allow tab-completion for `host-tuple` as the desired target.
+-    candidates.insert(
+-        0,
+-        clap_complete::CompletionCandidate::new("host-tuple").help(Some(
+-            concat!("alias for: ", env!("RUST_HOST_TARGET")).into(),
+-        )),
+-    );
++    // The help text will be handled at the Arg::value_parser level
++    candidates.insert(0, "host-tuple".to_owned());
+ 
+     candidates
+ }
+ 
+-pub fn get_target_triples_with_all() -> Vec<clap_complete::CompletionCandidate> {
+-    let mut candidates = vec![
+-        clap_complete::CompletionCandidate::new("all").help(Some("Include all targets".into())),
+-    ];
++pub fn get_target_triples_with_all() -> Vec<String> {
++    let mut candidates = vec!["all".to_owned()];
+     candidates.extend(get_target_triples());
+     candidates
+ }
+ 
+-fn get_target_triples_from_rustup() -> CargoResult<Vec<clap_complete::CompletionCandidate>> {
++fn get_target_triples_from_rustup() -> CargoResult<Vec<String>> {
+     let output = std::process::Command::new("rustup")
+         .arg("target")
+         .arg("list")
+@@ -1317,43 +1229,37 @@ fn get_target_triples_from_rustup() -> CargoResult<Vec<clap_complete::Completion
+         .map(|line| {
+             let target = line.split_once(' ');
+             match target {
+-                None => clap_complete::CompletionCandidate::new(line.to_owned()).hide(true),
+-                Some((target, _installed)) => clap_complete::CompletionCandidate::new(target),
++                None => line.to_owned(), // Just the line as a String
++                Some((target, _installed)) => target.to_owned(),
+             }
+         })
+         .collect())
+ }
+ 
+-fn get_target_triples_from_rustc() -> CargoResult<Vec<clap_complete::CompletionCandidate>> {
++fn get_target_triples_from_rustc() -> CargoResult<Vec<String>> {
+     let gctx = new_gctx_for_completions()?;
+ 
+     let ws = Workspace::new(&find_root_manifest_for_wd(gctx.cwd())?, &gctx);
+ 
+     let rustc = gctx.load_global_rustc(ws.as_ref().ok())?;
+ 
+-    let (stdout, _stderr) =
++    let (stdout, _stderr) = 
+         rustc.cached_output(rustc.process().arg("--print").arg("target-list"), 0)?;
+ 
+     Ok(stdout
+         .lines()
+-        .map(|line| clap_complete::CompletionCandidate::new(line.to_owned()))
++        .map(|line| line.to_owned()) // Return line as String
+         .collect())
+ }
+ 
+-pub fn get_ws_member_candidates() -> Vec<clap_complete::CompletionCandidate> {
++pub fn get_ws_member_candidates() -> CargoResult<Vec<String>> {
+     get_ws_member_packages()
+-        .unwrap_or_default()
+-        .into_iter()
+-        .map(|pkg| {
+-            clap_complete::CompletionCandidate::new(pkg.name().as_str()).help(
+-                pkg.manifest()
+-                    .metadata()
+-                    .description
+-                    .to_owned()
+-                    .map(From::from),
+-            )
++        .map(|packages| {
++            packages
++                .into_iter()
++                .map(|pkg| pkg.name().to_owned().to_string()) // Just package name as String
++                .collect::<Vec<_>>()
+         })
+-        .collect::<Vec<_>>()
+ }
+ 
+ fn get_ws_member_packages() -> CargoResult<Vec<Package>> {
+@@ -1363,11 +1269,11 @@ fn get_ws_member_packages() -> CargoResult<Vec<Package>> {
+     Ok(packages)
+ }
+ 
+-pub fn get_pkg_id_spec_candidates() -> Vec<clap_complete::CompletionCandidate> {
++pub fn get_pkg_id_spec_candidates() -> Vec<String> {
+     let mut candidates = vec![];
+ 
+     let package_map = HashMap::<&str, Vec<Package>>::new();
+-    let package_map =
++    let package_map = 
+         get_packages()
+             .unwrap_or_default()
+             .into_iter()
+@@ -1381,16 +1287,7 @@ pub fn get_pkg_id_spec_candidates() -> Vec<clap_complete::CompletionCandidate> {
+     let unique_name_candidates = package_map
+         .iter()
+         .filter(|(_name, packages)| packages.len() == 1)
+-        .map(|(name, packages)| {
+-            clap_complete::CompletionCandidate::new(name.to_string()).help(
+-                packages[0]
+-                    .manifest()
+-                    .metadata()
+-                    .description
+-                    .to_owned()
+-                    .map(From::from),
+-            )
+-        })
++        .map(|(name, _packages)| name.to_string())
+         .collect::<Vec<_>>();
+ 
+     let duplicate_name_pairs = package_map
+@@ -1409,36 +1306,13 @@ pub fn get_pkg_id_spec_candidates() -> Vec<clap_complete::CompletionCandidate> {
+         for package in packages {
+             if let Some(&count) = version_count.get(package.version()) {
+                 if count == 1 {
+-                    duplicate_name_candidates.push(
+-                        clap_complete::CompletionCandidate::new(format!(
+-                            "{}@{}",
+-                            name,
+-                            package.version()
+-                        ))
+-                        .help(
+-                            package
+-                                .manifest()
+-                                .metadata()
+-                                .description
+-                                .to_owned()
+-                                .map(From::from),
+-                        ),
+-                    );
++                    duplicate_name_candidates.push(format!(
++                        "{}@{}",
++                        name,
++                        package.version()
++                    ));
+                 } else {
+-                    duplicate_name_candidates.push(
+-                        clap_complete::CompletionCandidate::new(format!(
+-                            "{}",
+-                            package.package_id().to_spec()
+-                        ))
+-                        .help(
+-                            package
+-                                .manifest()
+-                                .metadata()
+-                                .description
+-                                .to_owned()
+-                                .map(From::from),
+-                        ),
+-                    )
++                    duplicate_name_candidates.push(package.package_id().to_spec().to_string());
+                 }
+             }
+         }
+@@ -1450,7 +1324,7 @@ pub fn get_pkg_id_spec_candidates() -> Vec<clap_complete::CompletionCandidate> {
+     candidates
+ }
+ 
+-pub fn get_pkg_name_candidates() -> Vec<clap_complete::CompletionCandidate> {
++pub fn get_pkg_name_candidates() -> Vec<String> {
+     let packages: BTreeMap<_, _> = get_packages()
+         .unwrap_or_default()
+         .into_iter()
+@@ -1464,9 +1338,7 @@ pub fn get_pkg_name_candidates() -> Vec<clap_complete::CompletionCandidate> {
+ 
+     packages
+         .into_iter()
+-        .map(|(name, description)| {
+-            clap_complete::CompletionCandidate::new(name.as_str()).help(description.map(From::from))
+-        })
++        .map(|(name, _description)| name.as_str().to_owned()) // Just name as String
+         .collect()
+ }
+ 
+@@ -1503,7 +1375,7 @@ fn get_packages() -> CargoResult<Vec<Package>> {
+     Ok(packages)
+ }
+ 
+-pub fn get_direct_dependencies_pkg_name_candidates() -> Vec<clap_complete::CompletionCandidate> {
++pub fn get_direct_dependencies_pkg_name_candidates() -> Vec<String> {
+     let (current_package_deps, all_package_deps) = match get_dependencies_from_metadata() {
+         Ok(v) => v,
+         Err(_) => return Vec::new(),
+@@ -1530,7 +1402,7 @@ pub fn get_direct_dependencies_pkg_name_candidates() -> Vec<clap_complete::Compl
+ 
+ fn get_dependencies_from_metadata() -> CargoResult<(Vec<Dependency>, Vec<Dependency>)> {
+     let cwd = std::env::current_dir()?;
+-    let gctx = GlobalContext::new(shell::Shell::new(), cwd.clone(), cargo_home_with_cwd(&cwd)?);
++    let mut gctx = GlobalContext::new(shell::Shell::new(), cwd.clone(), cargo_home_with_cwd(&cwd)?);
+     let ws = Workspace::new(&find_root_manifest_for_wd(&cwd)?, &gctx)?;
+     let current_package = ws.current().ok();
+ 
+@@ -1598,4 +1470,4 @@ pub enum CommandInfo {
+     BuiltIn { about: Option<String> },
+     External { path: PathBuf },
+     Alias { target: StringOrVec },
+-}
++}
+\ No newline at end of file
+
+commit 41c36801029fdb85b730db515cbb16aab16c9851
+Author: mike dupont <mike.dupont@introspector.local>
+Date:   Wed Dec 3 14:42:44 2025 -0500
+
+    fix: Remove workspace definitions from Cargo.toml in cargo submodule to resolve nested workspace error.
+
+diff --git a/Cargo.toml b/Cargo.toml
+index 8cc2e7895..c93971d70 100644
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -1,110 +1,169 @@
+-[workspace.package]
+-rust-version = "1.89"  # MSRV:3
+-edition = "2024"
+-license = "MIT OR Apache-2.0"
+-homepage = "https://github.com/rust-lang/cargo"
+-repository = "https://github.com/rust-lang/cargo"
+-
+-[workspace.dependencies]
+-annotate-snippets = { version = "0.12.9", features = ["simd"] }
+-anstream = "0.6.21"
+-anstyle = "1.0.13"
+-anyhow = "1.0.100"
+-base64 = "0.22.1"
+-blake3 = "1.8.2"
+-build-rs = { version = "0.3.1", path = "crates/build-rs" }
+-cargo = { path = "" }
+-cargo-credential = { version = "0.4.2", path = "credential/cargo-credential" }
+-cargo-credential-libsecret = { version = "0.5.4", path = "credential/cargo-credential-libsecret" }
+-cargo-credential-macos-keychain = { version = "0.4.19", path = "credential/cargo-credential-macos-keychain" }
+-cargo-credential-wincred = { version = "0.4.19", path = "credential/cargo-credential-wincred" }
+-cargo-platform = { path = "crates/cargo-platform", version = "0.3.0" }
+-cargo-test-macro = { version = "0.4.8", path = "crates/cargo-test-macro" }
+-cargo-test-support = { version = "0.9.1", path = "crates/cargo-test-support" }
+-cargo-util = { version = "0.2.26", path = "crates/cargo-util" }
+-cargo-util-schemas = { version = "0.11.0", path = "crates/cargo-util-schemas" }
+-cargo_metadata = "0.23.1"
+-clap = "4.5.53"
+-clap_complete = { version = "4.5.61", features = ["unstable-dynamic"] }
+-color-print = "0.3.7"
+-core-foundation = { version = "0.10.1", features = ["mac_os_10_7_support"] }
+-crates-io = { version = "0.40.16", path = "crates/crates-io" }
+-criterion = { version = "0.7.0", features = ["html_reports"] }
+-curl = "0.4.49"
+-curl-sys = "0.4.84"
+-filetime = "0.2.26"
+-flate2 = { version = "1.1.5", default-features = false, features = ["zlib-rs"] }
+-git2 = "0.20.2"
+-git2-curl = "0.21.0"
+-# When updating this, also see if `gix-transport` further down needs updating or some auth-related tests will fail.
+-gix = { version = "0.74.1", default-features = false, features = ["progress-tree", "parallel", "dirwalk", "status"] }
+-glob = "0.3.3"
+-# Pinned due to https://github.com/sunng87/handlebars-rust/issues/711
+-handlebars = { version = "=6.3.1", features = ["dir_source"] }
+-hex = "0.4.3"
+-hmac = "0.12.1"
+-home = "0.5.12"
+-http-auth = { version = "0.1.10", default-features = false }
+-ignore = "0.4.25"
+-im-rc = "15.1.0"
+-indexmap = "2.12.1"
+-itertools = "0.14.0"
+-jiff = { version = "0.2.16", default-features = false, features = [ "std" ] }
+-jobserver = "0.1.34"
+-libc = "0.2.177"
+-libgit2-sys = "0.18.2"
+-libloading = "0.8.9"
+-memchr = "2.7.6"
+-memfd = "0.6.5"
+-miow = "0.6.1"
+-opener = "0.8.3"
+-openssl = "0.10.75"
+-openssl-sys = "0.9.111"
+-os_info = { version = "3.13.0", default-features = false }
+-pasetors = { version = "0.7.7", features = ["v3", "paserk", "std", "serde"] }
+-pathdiff = "0.2.3"
+-percent-encoding = "2.3.2"
+-pkg-config = "0.3.32"
+-proptest = "1.9.0"
+-pulldown-cmark = { version = "0.13.0", default-features = false, features = ["html"] }
+-rand = "0.9.2"
+-regex = "1.12.2"
+-rusqlite = { version = "0.37.0", features = ["bundled"] }
+-rustc-hash = "2.1.1"
+-rustc-stable-hash = "0.1.2"
+-rustfix = { version = "0.9.2", path = "crates/rustfix" }
+-same-file = "1.0.6"
+-schemars = "1.1.0"
+-security-framework = "3.5.1"
+-semver = { version = "1.0.27", features = ["serde"] }
+-serde = "1.0.228"
+-serde_core = "1.0.228"
+-serde-untagged = "0.1.9"
+-serde-value = "0.7.0"
+-serde_ignored = "0.1.14"
+-serde_json = "1.0.145"
+-sha1 = "0.10.6"
+-sha2 = "0.10.9"
+-shell-escape = "0.1.5"
+-similar = "2.7.0"
+-supports-hyperlinks = "3.1.0"
+-supports-unicode = "3.0.0"
+-snapbox = { version = "0.6.23", features = ["diff", "dir", "term-svg", "regex", "json"] }
+-tar = { version = "0.4.44", default-features = false }
+-tempfile = "3.23.0"
+-thiserror = "2.0.17"
+-time = { version = "0.3.44", features = ["parsing", "formatting", "serde"] }
+-toml = { version = "0.9.8", default-features = false }
+-toml_edit = { version = "0.23.7", features = ["serde"] }
+-tracing = { version = "0.1.43", default-features = false, features = ["std"] } # be compatible with rustc_log: https://github.com/rust-lang/r
+-
+-[workspace.lints]
++
+ 
+ [workspace.lints.rust]
+-#unexpected_cfgs = { level = "warn", check-cfg = ["has_specialisation"] }
+-all = "allow"
+-warnings = "allow"
++rust_2018_idioms = "warn" # TODO: could this be removed?
++
++[workspace.lints.rustdoc]
++private_intra_doc_links = "allow"
++
+ [workspace.lints.clippy]
+-#unexpected_cfgs = { level = "warn", check-cfg = ["has_specialisation"] }
+-all = "allow"
+-warnings = "allow"
+\ No newline at end of file
++all = { level = "allow", priority = -2 }
++correctness = { level = "warn", priority = -1 }
++dbg_macro = "warn"
++disallowed_methods = "warn"
++print_stderr = "warn"
++print_stdout = "warn"
++self_named_module_files = "warn"
++
++[package]
++name = "cargo"
++version = "0.94.0"
++edition.workspace = true
++license.workspace = true
++rust-version = "1.91"  # MSRV:1
++homepage = "https://doc.rust-lang.org/cargo/index.html"
++repository.workspace = true
++documentation = "https://docs.rs/cargo"
++description = """
++Cargo, a package manager for Rust.
++"""
++
++[lib]
++name = "cargo"
++path = "src/cargo/lib.rs"
++
++[dependencies]
++annotate-snippets.workspace = true
++anstream.workspace = true
++anstyle.workspace = true
++anyhow.workspace = true
++base64.workspace = true
++blake3.workspace = true
++cargo-credential.workspace = true
++cargo-platform.workspace = true
++cargo-util-schemas.workspace = true
++cargo-util.workspace = true
++clap = { workspace = true, features = ["wrap_help"] }
++clap_complete.workspace = true
++color-print.workspace = true
++crates-io.workspace = true
++curl = { workspace = true, features = ["http2"] }
++curl-sys.workspace = true
++filetime.workspace = true
++flate2.workspace = true
++git2.workspace = true
++git2-curl.workspace = true
++gix.workspace = true
++glob.workspace = true
++hex.workspace = true
++hmac.workspace = true
++home.workspace = true
++http-auth.workspace = true
++ignore.workspace = true
++im-rc.workspace = true
++indexmap.workspace = true
++itertools.workspace = true
++jiff = { workspace = true, features = ["serde", "std"] }
++jobserver.workspace = true
++libgit2-sys.workspace = true
++memchr.workspace = true
++opener.workspace = true
++os_info.workspace = true
++pasetors.workspace = true
++pathdiff.workspace = true
++rand.workspace = true
++regex.workspace = true
++rusqlite.workspace = true
++rustc-hash.workspace = true
++rustc-stable-hash.workspace = true
++rustfix.workspace = true
++same-file.workspace = true
++semver.workspace = true
++serde = { workspace = true, features = ["derive"] }
++serde-untagged.workspace = true
++serde_ignored.workspace = true
++serde_json = { workspace = true, features = ["raw_value"] }
++sha1.workspace = true
++shell-escape.workspace = true
++supports-hyperlinks.workspace = true
++supports-unicode.workspace = true
++tar.workspace = true
++tempfile.workspace = true
++thiserror.workspace = true
++time.workspace = true
++toml = { workspace = true, features = ["std", "serde", "parse", "display", "preserve_order"] }
++toml_edit.workspace = true
++tracing = { workspace = true, features = ["attributes"] }
++tracing-subscriber.workspace = true
++unicase.workspace = true
++unicode-width.workspace = true
++unicode-ident.workspace = true
++url.workspace = true
++walkdir.workspace = true
++winnow.workspace = true
++
++[target.'cfg(target_has_atomic = "64")'.dependencies]
++tracing-chrome.workspace = true
++
++[target.'cfg(unix)'.dependencies]
++libc.workspace = true
++
++[target.'cfg(target_os = "linux")'.dependencies]
++cargo-credential-libsecret.workspace = true
++
++[target.'cfg(target_os = "macos")'.dependencies]
++cargo-credential-macos-keychain.workspace = true
++
++[target.'cfg(not(windows))'.dependencies]
++openssl = { workspace = true, optional = true }
++
++[target.'cfg(windows)'.dependencies]
++cargo-credential-wincred.workspace = true
++
++[target.'cfg(windows)'.dependencies.windows-sys]
++workspace = true
++features = [
++  "Win32_Foundation",
++  "Win32_Security",
++  "Win32_Storage_FileSystem",
++  "Win32_System_IO",
++  "Win32_System_Console",
++  "Win32_System_JobObjects",
++  "Win32_System_Threading",
++]
++
++[dev-dependencies]
++annotate-snippets = { workspace = true, features = ["testing-colors"] }
++cargo-test-support.workspace = true
++gix = { workspace = true, features = ["revision"] }
++# When building Cargo for tests, a safety-measure in `gix` needs to be disabled
++# to allow sending credentials over HTTP connections.
++gix-transport = { version = "0.49.1", features = ["http-client-insecure-credentials"] }
++same-file.workspace = true
++snapbox.workspace = true
++
++[target.'cfg(target_os = "linux")'.dev-dependencies]
++memfd.workspace = true
++
++[build-dependencies]
++flate2.workspace = true
++tar.workspace = true
++
++[[bin]]
++name = "cargo"
++test = false
++doc = false
++
++[features]
++default = ["http-transport-curl"]
++vendored-openssl = ["openssl/vendored"]
++vendored-libgit2 = ["libgit2-sys/vendored"]
++# This is primarily used by rust-lang/rust distributing cargo the executable.
++all-static = ['vendored-openssl', 'curl/static-curl', 'curl/force-system-lib-on-osx', 'vendored-libgit2']
++# Exactly one of 'http-transport-curl' or 'http-transport-reqwest' must be enabled
++# when using Cargo as a library. By default, it is 'http-transport-curl'.
++http-transport-curl = ["gix/blocking-http-transport-curl"]
++http-transport-reqwest = ["gix/blocking-http-transport-reqwest"]
++
++[lints]
++workspace = true
+
+commit 8120e3cd7ace52602525256e1339c880a2b3160a
+Author: mike dupont <mike.dupont@introspector.local>
+Date:   Wed Dec 3 14:38:47 2025 -0500
+
+    feat: Add workspace.lints to cargo submodule's Cargo.toml to resolve inheritance error.
+
+diff --git a/Cargo.toml b/Cargo.toml
+index 89a4d4d78..8cc2e7895 100644
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -96,4 +96,15 @@ thiserror = "2.0.17"
+ time = { version = "0.3.44", features = ["parsing", "formatting", "serde"] }
+ toml = { version = "0.9.8", default-features = false }
+ toml_edit = { version = "0.23.7", features = ["serde"] }
+-tracing = { version = "0.1.43", default-features = false, features = ["std"] } # be compatible with rustc_log: https://github.com/rust-lang/r
+\ No newline at end of file
++tracing = { version = "0.1.43", default-features = false, features = ["std"] } # be compatible with rustc_log: https://github.com/rust-lang/r
++
++[workspace.lints]
++
++[workspace.lints.rust]
++#unexpected_cfgs = { level = "warn", check-cfg = ["has_specialisation"] }
++all = "allow"
++warnings = "allow"
++[workspace.lints.clippy]
++#unexpected_cfgs = { level = "warn", check-cfg = ["has_specialisation"] }
++all = "allow"
++warnings = "allow"
+\ No newline at end of file
+
+commit 06e944ae94341665ca2b99815f90baceae5d0a6d
+Merge: a6d8be3db 05e32af9b
+Author: mike dupont <mike.dupont@introspector.local>
+Date:   Wed Dec 3 14:37:27 2025 -0500
+
+    feat: Resolve merge conflict in Cargo.toml of cargo submodule.
+
+commit a6d8be3db9e536835107795e7d219d9d1acd9b35
+Author: mike dupont <mike.dupont@introspector.local>
+Date:   Wed Dec 3 11:31:07 2025 -0500
+
+    feat: Add/update Nix flake for submodule (CRQ-016)
+
+diff --git a/crates/cargo-test-support/Cargo.toml b/crates/cargo-test-support/Cargo.toml
+index 89d13913f..d4d28d5e4 100644
+--- a/crates/cargo-test-support/Cargo.toml
++++ b/crates/cargo-test-support/Cargo.toml
+@@ -24,7 +24,7 @@ pasetors.workspace = true
+ regex.workspace = true
+ serde = { workspace = true, features = ["derive"] }
+ serde_json.workspace = true
+-snapbox.workspace = true
++snapbox = { workspace = true, features = ["dir", "json", "regex"] }
+ tar.workspace = true
+ time.workspace = true
+ toml = { workspace = true, features = ["display", "serde"] }
+diff --git a/crates/cargo-util-schemas/Cargo.toml b/crates/cargo-util-schemas/Cargo.toml
+index 44fbf7a18..d4e949b70 100644
+--- a/crates/cargo-util-schemas/Cargo.toml
++++ b/crates/cargo-util-schemas/Cargo.toml
+@@ -10,7 +10,7 @@ description = "Deserialization schemas for Cargo"
+ 
+ [dependencies]
+ schemars = { workspace = true, features = ["preserve_order", "semver1"], optional = true }
+-semver.workspace = true
++semver = { workspace = true, features = ["serde"] }
+ serde = { workspace = true, features = ["derive"] }
+ serde_json = { workspace = true, optional = true }
+ serde-untagged.workspace = true
+diff --git a/src/cargo/core/global_cache_tracker.rs b/src/cargo/core/global_cache_tracker.rs
+index 619836816..e95907970 100644
+--- a/src/cargo/core/global_cache_tracker.rs
++++ b/src/cargo/core/global_cache_tracker.rs
+@@ -144,12 +144,12 @@ const GIT_CO_TABLE: &str = "git_checkout";
+ /// As an optimization timestamps are not updated unless they are older than
+ /// the given number of seconds. This helps reduce the amount of disk I/O when
+ /// running cargo multiple times within a short window.
+-const UPDATE_RESOLUTION: u64 = 60 * 5;
++const UPDATE_RESOLUTION: i64 = 60 * 5;
+ 
+ /// Type for timestamps as stored in the database.
+ ///
+ /// These are seconds since the Unix epoch.
+-type Timestamp = u64;
++type Timestamp = i64;
+ 
+ /// The key for a registry index entry stored in the database.
+ #[derive(Clone, Debug, Hash, Eq, PartialEq)]
+@@ -166,7 +166,7 @@ pub struct RegistryCrate {
+     /// The filename of the compressed crate, like `foo-1.2.3.crate`.
+     pub crate_filename: InternedString,
+     /// The size of the `.crate` file.
+-    pub size: u64,
++    pub size: i64,
+ }
+ 
+ /// The key for a registry src directory entry stored in the database.
+@@ -175,17 +175,7 @@ pub struct RegistrySrc {
+     /// A unique name of the registry source.
+     pub encoded_registry_name: InternedString,
+     /// The directory name of the extracted source, like `foo-1.2.3`.
+-    pub package_dir: InternedString,
+-    /// Total size of the src directory in bytes.
+-    ///
+-    /// This can be None when the size is unknown. For example, when the src
+-    /// directory already exists on disk, and we just want to update the
+-    /// last-use timestamp. We don't want to take the expense of computing disk
+-    /// usage unless necessary. [`GlobalCacheTracker::populate_untracked`]
+-    /// will handle any actual NULL values in the database, which can happen
+-    /// when the src directory is created by an older version of cargo that
+-    /// did not track sizes.
+-    pub size: Option<u64>,
++    pub size: Option<i64>,
+ }
+ 
+ /// The key for a git db entry stored in the database.
+@@ -206,7 +196,7 @@ pub struct GitCheckout {
+     ///
+     /// This can be None when the size is unknown. See [`RegistrySrc::size`]
+     /// for an explanation.
+-    pub size: Option<u64>,
++    pub size: Option<i64>,
+ }
+ 
+ /// Filesystem paths in the global cache.
+@@ -927,7 +917,7 @@ impl GlobalCacheTracker {
+             for crate_name in crates {
+                 // Missing files should have already been taken care of by
+                 // update_db_for_removed.
+-                let size = paths::metadata(index_path.join(&crate_name))?.len();
++                let size = paths::metadata(index_path.join(&crate_name))?.len() as i64;
+                 insert_stmt.execute(params![id, crate_name, size, now])?;
+             }
+         }
+@@ -984,7 +974,7 @@ impl GlobalCacheTracker {
+                 }
+                 progress.tick(i, max, "")?;
+                 let size = if populate_size {
+-                    Some(du(&dir_path, table_name)?)
++                    Some(du(&dir_path, table_name)? as i64)
+                 } else {
+                     None
+                 };
+@@ -1032,7 +1022,7 @@ impl GlobalCacheTracker {
+             progress.tick(i, max, "")?;
+             // Missing files should have already been taken care of by
+             // update_db_for_removed.
+-            let size = du(&path, table_name)?;
++            let size = du(&path, table_name)? as i64;
+             update_stmt.execute(params![size, rowid])?;
+         }
+         Ok(())
+@@ -1072,13 +1062,13 @@ impl GlobalCacheTracker {
+     /// order to keep the total size under the given max size.
+     fn get_registry_items_to_clean_size(
+         conn: &Connection,
+-        max_size: u64,
++        max_size: i64,
+         table_name: &str,
+         base_path: &Path,
+         delete_paths: &mut Vec<PathBuf>,
+     ) -> CargoResult<()> {
+         debug!(target: "gc", "cleaning {table_name} till under {max_size:?}");
+-        let total_size: u64 = conn.query_row(
++        let total_size: i64 = conn.query_row(
+             &format!("SELECT coalesce(SUM(size), 0) FROM {table_name}"),
+             [],
+             |row| row.get(0),
+@@ -1130,7 +1120,7 @@ impl GlobalCacheTracker {
+     /// order to keep the total size under the given max size.
+     fn get_registry_items_to_clean_size_both(
+         conn: &Connection,
+-        max_size: u64,
++        max_size: i64,
+         base: &BasePaths,
+         delete_paths: &mut Vec<PathBuf>,
+     ) -> CargoResult<()> {
+@@ -1170,8 +1160,8 @@ impl GlobalCacheTracker {
+                     row.get_unwrap(4),
+                 ))
+             })?
+-            .collect::<Result<Vec<(i64, i64, String, String, u64)>, _>>()?;
+-        let mut total_size: u64 = rows.iter().map(|r| r.4).sum();
++            .collect::<Result<Vec<(i64, i64, String, String, i64)>, _>>()?;
++        let mut total_size: i64 = rows.iter().map(|r| r.4).sum();
+         debug!(target: "gc", "total download cache size appears to be {total_size}");
+         for (table, rowid, name, index_name, size) in rows {
+             if total_size <= max_size {
+@@ -1196,7 +1186,7 @@ impl GlobalCacheTracker {
+     /// Paths are relative to the `git` directory in the cache directory.
+     fn get_git_items_to_clean_size(
+         conn: &Connection,
+-        max_size: u64,
++        max_size: i64,
+         base: &BasePaths,
+         delete_paths: &mut Vec<PathBuf>,
+     ) -> CargoResult<()> {
+@@ -1211,11 +1201,11 @@ impl GlobalCacheTracker {
+                 let timestamp: Timestamp = row.get_unwrap(2);
+                 // Size is added below so that the error doesn't need to be
+                 // converted to a rusqlite error.
+-                Ok((timestamp, rowid, None, name, 0))
++                Ok((timestamp, rowid, None, name, 0i64))
+             })?
+             .collect::<Result<Vec<_>, _>>()?;
+         for info in &mut git_info {
+-            let size = cargo_util::du(&base.git_db.join(&info.3), &[])?;
++            let size = cargo_util::du(&base.git_db.join(&info.3), &[])? as i64;
+             info.4 = size;
+         }
+ 
+@@ -1230,7 +1220,7 @@ impl GlobalCacheTracker {
+                 let rowid = row.get_unwrap(0);
+                 let db_name: String = row.get_unwrap(1);
+                 let name = row.get_unwrap(2);
+-                let size = row.get_unwrap(3);
++                let size: i64 = row.get_unwrap(3);
+                 let timestamp = row.get_unwrap(4);
+                 Ok((timestamp, rowid, Some(db_name), name, size))
+             })?
+@@ -1246,7 +1236,7 @@ impl GlobalCacheTracker {
+         let mut delete_db_stmt = conn.prepare_cached("DELETE FROM git_db WHERE rowid = ?1")?;
+         let mut delete_co_stmt =
+             conn.prepare_cached("DELETE FROM git_checkout WHERE rowid = ?1")?;
+-        let mut total_size: u64 = git_info.iter().map(|r| r.4).sum();
++        let mut total_size: i64 = git_info.iter().map(|r| r.4).sum();
+         debug!(target: "gc", "total git cache size appears to be {total_size}");
+         while let Some((_timestamp, rowid, db_name, name, size)) = git_info.pop() {
+             if total_size <= max_size {
+@@ -1781,7 +1771,7 @@ impl DeferredGlobalLastUse {
+ fn to_timestamp(t: &SystemTime) -> Timestamp {
+     t.duration_since(SystemTime::UNIX_EPOCH)
+         .expect("invalid clock")
+-        .as_secs()
++        .as_secs() as i64
+ }
+ 
+ /// Returns the current time.
+@@ -1820,17 +1810,17 @@ pub fn is_silent_error(e: &anyhow::Error) -> bool {
+ 
+ /// Returns the disk usage for a git checkout directory.
+ #[tracing::instrument]
+-fn du_git_checkout(path: &Path) -> CargoResult<u64> {
++fn du_git_checkout(path: &Path) -> CargoResult<i64> {
+     // !.git is used because clones typically use hardlinks for the git
+     // contents. TODO: Verify behavior on Windows.
+     // TODO: Or even better, switch to worktrees, and remove this.
+-    cargo_util::du(&path, &["!.git"])
++    Ok(cargo_util::du(&path, &["!.git"])? as i64)
+ }
+ 
+-fn du(path: &Path, table_name: &str) -> CargoResult<u64> {
++fn du(path: &Path, table_name: &str) -> CargoResult<i64> {
+     if table_name == GIT_CO_TABLE {
+         du_git_checkout(path)
+     } else {
+-        cargo_util::du(&path, &[])
++        Ok(cargo_util::du(&path, &[])? as i64)
+     }
+ }
+
+commit 10b7cb22509321ca2127a1c7c0f992f4c2e3ab74
+Author: mike dupont <mike.dupont@introspector.local>
+Date:   Wed Dec 3 11:20:20 2025 -0500
+
+    feat: Add/update Nix flake for submodule (CRQ-016)
+
+diff --git a/Cargo.toml b/Cargo.toml
+index ff41f13d5..701b1ae43 100644
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -147,8 +147,12 @@ vendored-libgit2 = ["libgit2-sys/vendored"]
+ all-static = ['vendored-openssl', 'curl/static-curl', 'curl/force-system-lib-on-osx', 'vendored-libgit2']
+ # Exactly one of 'http-transport-curl' or 'http-transport-reqwest' must be enabled
+ # when using Cargo as a library. By default, it is 'http-transport-curl'.
+-http-transport-curl = ["gix/blocking-http-transport-curl"]
+-http-transport-reqwest = ["gix/blocking-http-transport-reqwest"]
++http-transport-curl = [
++"gix/blocking-http-transport-curl"
++]
++http-transport-reqwest = [
++"gix/blocking-http-transport-reqwest"
++]
+ 
+ [lints]
+ workspace = true
+
+commit 9ffe58f1715c03e9a60cc451e50a4328db604f58
+Author: mike dupont <mike.dupont@introspector.local>
+Date:   Mon Dec 1 12:47:23 2025 -0500
+
+    feat: Add/update Nix flake for submodule (CRQ-016)
+
+diff --git a/Cargo.toml b/Cargo.toml
+index d05846023..ff41f13d5 100644
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -2,10 +2,10 @@
+ 
+ [package]
+ name = "cargo"
+-version = "0.94.0"
++version.workspace = true
+ edition.workspace = true
+ license.workspace = true
+-rust-version = "1.91"  # MSRV:1
++rust-version.workspace = true # MSRV:1
+ homepage = "https://doc.rust-lang.org/cargo/index.html"
+ repository.workspace = true
+ documentation = "https://docs.rs/cargo"
+@@ -29,7 +29,7 @@ cargo-platform.workspace = true
+ cargo-util-schemas.workspace = true
+ cargo-util.workspace = true
+ clap = { workspace = true, features = ["wrap_help"] }
+-clap_complete.workspace = true
++clap_complete = { workspace = true, features = ["unstable-dynamic"] }
+ color-print.workspace = true
+ crates-io.workspace = true
+ curl = { workspace = true, features = ["http2"] }
+@@ -123,7 +123,7 @@ cargo-test-support.workspace = true
+ gix = { workspace = true, features = ["revision"] }
+ # When building Cargo for tests, a safety-measure in `gix` needs to be disabled
+ # to allow sending credentials over HTTP connections.
+-gix-transport = { version = "0.49.1", features = ["http-client-insecure-credentials"] }
++gix-transport = { workspace = true, features = ["http-client-insecure-credentials"] }
+ same-file.workspace = true
+ snapbox.workspace = true
+ 
+
+commit eee98336e11b93e24cd32dd87157a0e5991a37a0
+Author: mike dupont <mike.dupont@introspector.local>
+Date:   Sun Nov 30 14:21:09 2025 -0500
+
+    revert: Revert gix-transport dependency to version-pinned state
+
+diff --git a/Cargo.toml b/Cargo.toml
+index ca281d1c1..d05846023 100644
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -1,139 +1,4 @@
+-[workspace]
+-resolver = "2"
+-members = [
+-  "crates/*",
+-  "credential/*",
+-  "benches/benchsuite",
+-  "benches/capture",
+-]
+-exclude = [
+-  "target/", # exclude bench testing
+-]
+-
+-[workspace.package]
+-rust-version = "1.89"  # MSRV:3
+-edition = "2024"
+-license = "MIT OR Apache-2.0"
+-homepage = "https://github.com/rust-lang/cargo"
+-repository = "https://github.com/rust-lang/cargo"
+-
+-[workspace.dependencies]
+-annotate-snippets = { version = "0.12.8", features = ["simd"] }
+-anstream = "0.6.21"
+-anstyle = "1.0.13"
+-anyhow = "1.0.100"
+-base64 = "0.22.1"
+-blake3 = "1.8.2"
+-build-rs = { version = "0.3.1", path = "crates/build-rs" }
+-cargo = { path = "" }
+-cargo-credential = { version = "0.4.2", path = "credential/cargo-credential" }
+-cargo-credential-libsecret = { version = "0.5.4", path = "credential/cargo-credential-libsecret" }
+-cargo-credential-macos-keychain = { version = "0.4.19", path = "credential/cargo-credential-macos-keychain" }
+-cargo-credential-wincred = { version = "0.4.19", path = "credential/cargo-credential-wincred" }
+-cargo-platform = { path = "crates/cargo-platform", version = "0.3.0" }
+-cargo-test-macro = { version = "0.4.8", path = "crates/cargo-test-macro" }
+-cargo-test-support = { version = "0.9.1", path = "crates/cargo-test-support" }
+-cargo-util = { version = "0.2.26", path = "crates/cargo-util" }
+-cargo-util-schemas = { version = "0.11.0", path = "crates/cargo-util-schemas" }
+-cargo_metadata = "0.23.1"
+-clap = "4.5.51"
+-clap_complete = { version = "4.5.60", features = ["unstable-dynamic"] }
+-color-print = "0.3.7"
+-core-foundation = { version = "0.10.1", features = ["mac_os_10_7_support"] }
+-crates-io = { version = "0.40.16", path = "crates/crates-io" }
+-criterion = { version = "0.7.0", features = ["html_reports"] }
+-curl = "0.4.49"
+-curl-sys = "0.4.83"
+-filetime = "0.2.26"
+-flate2 = { version = "1.1.5", default-features = false, features = ["zlib-rs"] }
+-git2 = "0.20.2"
+-git2-curl = "0.21.0"
+-# When updating this, also see if `gix-transport` further down needs updating or some auth-related tests will fail.
+-gix = { version = "0.74.1", default-features = false, features = ["progress-tree", "parallel", "dirwalk", "status"] }
+-glob = "0.3.3"
+-# Pinned due to https://github.com/sunng87/handlebars-rust/issues/711
+-handlebars = { version = "=6.3.1", features = ["dir_source"] }
+-hex = "0.4.3"
+-hmac = "0.12.1"
+-home = "0.5.12"
+-http-auth = { version = "0.1.10", default-features = false }
+-ignore = "0.4.25"
+-im-rc = "15.1.0"
+-indexmap = "2.12.0"
+-itertools = "0.14.0"
+-jiff = { version = "0.2.15", default-features = false, features = [ "std" ] }
+-jobserver = "0.1.34"
+-libc = "0.2.177"
+-libgit2-sys = "0.18.2"
+-libloading = "0.8.9"
+-memchr = "2.7.6"
+-memfd = "0.6.5"
+-miow = "0.6.1"
+-opener = "0.8.3"
+-openssl = "0.10.74"
+-openssl-sys = "0.9.110"
+-os_info = { version = "3.12.0", default-features = false }
+-pasetors = { version = "0.7.7", features = ["v3", "paserk", "std", "serde"] }
+-pathdiff = "0.2.3"
+-percent-encoding = "2.3.2"
+-pkg-config = "0.3.32"
+-proptest = "1.9.0"
+-pulldown-cmark = { version = "0.13.0", default-features = false, features = ["html"] }
+-rand = "0.9.2"
+-regex = "1.12.2"
+-rusqlite = { version = "0.37.0", features = ["bundled"] }
+-rustc-hash = "2.1.1"
+-rustc-stable-hash = "0.1.2"
+-rustfix = { version = "0.9.2", path = "crates/rustfix" }
+-same-file = "1.0.6"
+-schemars = "1.0.5"
+-security-framework = "3.5.1"
+-semver = { version = "1.0.27", features = ["serde"] }
+-serde = "1.0.228"
+-serde_core = "1.0.228"
+-serde-untagged = "0.1.9"
+-serde-value = "0.7.0"
+-serde_ignored = "0.1.14"
+-serde_json = "1.0.145"
+-sha1 = "0.10.6"
+-sha2 = "0.10.9"
+-shell-escape = "0.1.5"
+-similar = "2.7.0"
+-supports-hyperlinks = "3.1.0"
+-supports-unicode = "3.0.0"
+-snapbox = { version = "0.6.23", features = ["diff", "dir", "term-svg", "regex", "json"] }
+-tar = { version = "0.4.44", default-features = false }
+-tempfile = "3.23.0"
+-thiserror = "2.0.17"
+-time = { version = "0.3.44", features = ["parsing", "formatting", "serde"] }
+-toml = { version = "0.9.8", default-features = false }
+-toml_edit = { version = "0.23.7", features = ["serde"] }
+-tracing = { version = "0.1.41", default-features = false, features = ["std"] } # be compatible with rustc_log: https://github.com/rust-lang/rust/blob/e51e98dde6a/compiler/rustc_log/Cargo.toml#L9
+-tracing-chrome = "0.7.2"
+-tracing-subscriber = { version = "0.3.20", features = ["env-filter"] }
+-unicase = "2.8.1"
+-unicode-ident = "1.0.22"
+-unicode-width = "0.2.2"
+-url = "2.5.7"
+-varisat = "0.2.2"
+-walkdir = "2.5.0"
+-windows-sys = "0.61"
+-winnow = "0.7.13"
+-
+-[workspace.lints.rust]
+-rust_2018_idioms = "warn" # TODO: could this be removed?
+-
+-[workspace.lints.rustdoc]
+-private_intra_doc_links = "allow"
+ 
+-[workspace.lints.clippy]
+-all = { level = "allow", priority = -2 }
+-correctness = { level = "warn", priority = -1 }
+-dbg_macro = "warn"
+-disallowed_methods = "warn"
+-print_stderr = "warn"
+-print_stdout = "warn"
+-self_named_module_files = "warn"
+ 
+ [package]
+ name = "cargo"
+
+commit 64e1a26528411ee5ec39e7523379626ea0f5f824 (refs/remotes/origin/master)
+Author: mike dupont <h4@solfunmeme.com>
+Date:   Sat Aug 30 22:40:43 2025 -0400
+
+    Update Cargo.toml files
+
+diff --git a/Cargo.toml b/Cargo.toml
+index 888403243..6efa17220 100644
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -107,7 +107,7 @@ thiserror = "2.0.12"
+ time = { version = "0.3.41", features = ["parsing", "formatting", "serde"] }
+ toml = { version = "0.9.5", default-features = false }
+ toml_edit = { version = "0.23.3", features = ["serde"] }
+-tracing = { path = "../tracing-vendor/tracing-0.1.41/tracing", default-features = false, features = ["attributes"] }
++tracing-core = { path = "../tracing-vendor/tracing/tracing-core", default-features = false }
+ tracing-chrome = "0.7.2"
+ tracing-subscriber = { version = "0.3.19", features = ["env-filter"] }
+ unicase = "2.8.1"
+diff --git a/crates/rustfix/Cargo.toml b/crates/rustfix/Cargo.toml
+index 3e1de8d1b..d761284ac 100644
+--- a/crates/rustfix/Cargo.toml
++++ b/crates/rustfix/Cargo.toml
+@@ -21,7 +21,7 @@ exclude = [
+ serde = { workspace = true, features = ["derive"] }
+ serde_json.workspace = true
+ thiserror.workspace = true
+-tracing.workspace = true
++tracing-core.workspace = true
+ 
+ [dev-dependencies]
+ anyhow.workspace = true
+
+commit 010c37b6a8af094ab42670728fe4032d126d36f8
+Author: mike dupont <h4@solfunmeme.com>
+Date:   Sat Aug 30 20:53:59 2025 -0400
+
+    Local modifications for monorepo integration.
+
+diff --git a/Cargo.toml b/Cargo.toml
+index ef2e3d77c..888403243 100644
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -107,7 +107,7 @@ thiserror = "2.0.12"
+ time = { version = "0.3.41", features = ["parsing", "formatting", "serde"] }
+ toml = { version = "0.9.5", default-features = false }
+ toml_edit = { version = "0.23.3", features = ["serde"] }
+-tracing = { version = "0.1.41", default-features = false, features = ["std"] } # be compatible with rustc_log: https://github.com/rust-lang/rust/blob/e51e98dde6a/compiler/rustc_log/Cargo.toml#L9
++tracing = { path = "../tracing-vendor/tracing-0.1.41/tracing", default-features = false, features = ["attributes"] }
+ tracing-chrome = "0.7.2"
+ tracing-subscriber = { version = "0.3.19", features = ["env-filter"] }
+ unicase = "2.8.1"
+diff --git a/src/cargo/ops/cargo_test.rs b/src/cargo/ops/cargo_test.rs
+index cbe6c1272..7e9190dde 100644
+--- a/src/cargo/ops/cargo_test.rs
++++ b/src/cargo/ops/cargo_test.rs
+@@ -11,6 +11,7 @@ use cargo_util::{ProcessBuilder, ProcessError};
+ use std::ffi::OsString;
+ use std::fmt::Write;
+ use std::path::{Path, PathBuf};
++use crate::core::compiler::UserIntent;
+ 
+ pub struct TestOptions {
+     pub compile_opts: ops::CompileOptions,
+@@ -64,20 +65,23 @@ impl UnitTestError {
+ ///
+ /// On error, the returned [`CliError`] will have the appropriate process exit
+ /// code that Cargo should use.
+-pub fn run_tests(ws: &Workspace<'_>, options: &TestOptions, test_args: &[&str]) -> CliResult {
+-    let compilation = compile_tests(ws, options)?;
+-
+-    if options.no_run {
+-        if !options.compile_opts.build_config.emit_json() {
+-            display_no_run_information(ws, test_args, &compilation, "unittests")?;
+-        }
+-        return Ok(());
+-    }
+-    let mut errors = run_unit_tests(ws, options, test_args, &compilation, TestKind::Test)?;
+-
+-    let doctest_errors = run_doc_tests(ws, options, test_args, &compilation)?;
+-    errors.extend(doctest_errors);
+-    no_fail_fast_err(ws, &options.compile_opts, &errors)
++use crate::ops::CompileOptions;
++
++pub fn parse_test_args(
++    _gctx: &GlobalContext,
++    _args: &[&str],
++    _rust_root: &PathBuf,
++) -> CargoResult<TestOptions> {
++    // TODO: Implement parsing for TestOptions
++    // This will involve creating a clap Command for 'cargo test'
++    // and mapping its arguments to TestOptions fields.
++
++    // For now, return a basic TestOptions
++    Ok(TestOptions {
++        compile_opts: CompileOptions::new(_gctx, UserIntent::Test)?,
++        no_run: false,
++        no_fail_fast: false,
++    })
+ }
+ 
+ /// Compiles and runs benchmarks.
+diff --git a/src/cargo/ops/mod.rs b/src/cargo/ops/mod.rs
+index 2fa8b5927..f5d10361b 100644
+--- a/src/cargo/ops/mod.rs
++++ b/src/cargo/ops/mod.rs
+@@ -18,7 +18,7 @@ pub use self::cargo_package::package;
+ pub use self::cargo_pkgid::pkgid;
+ pub use self::cargo_read_manifest::read_package;
+ pub use self::cargo_run::run;
+-pub use self::cargo_test::{TestOptions, run_benches, run_tests};
++pub use self::cargo_test::{TestOptions, run_benches};
+ pub use self::cargo_uninstall::uninstall;
+ pub use self::cargo_update::UpdateOptions;
+ pub use self::cargo_update::generate_lockfile;
+
+commit be11be64a377650e188792255ae49d97539cca57
+Author: mike dupont <h4@solfunmeme.com>
+Date:   Fri Aug 29 07:14:53 2025 -0400
+
+    feat: Add cargo hf-export command for Hugging Face dataset extraction
+
+diff --git a/src/bin/cargo/commands/hf_export.rs b/src/bin/cargo/commands/hf_export.rs
+new file mode 100644
+index 000000000..8d2b39719
+--- /dev/null
++++ b/src/bin/cargo/commands/hf_export.rs
+@@ -0,0 +1,72 @@
++use crate::command_prelude::*;
++use cargo2hf_extractor::{Cargo2HfExtractor, CargoExtractionPhase};
++use std::path::Path;
++
++pub fn cli() -> Command {
++    subcommand("hf-export")
++        .about("Extracts Cargo project data for Hugging Face datasets")
++        .arg(Arg::new("path")
++            .value_name("PATH")
++            .help("Path to the Cargo project root (containing Cargo.toml)")
++            .required(true))
++        .arg(Arg::new("output")
++            .value_name("OUTPUT_DIR")
++            .help("Directory where Parquet files will be written")
++            .default_value("hf-dataset-output"))
++        .arg(Arg::new("include-deps")
++            .long("include-deps")
++            .help("Recursively analyze dependencies"))
++        .arg(Arg::new("phases")
++            .long("phases")
++            .value_name("PHASES")
++            .help("Comma-separated list of phases to extract (e.g., metadata,dependencies)")
++            .default_value("metadata,dependencies,source_code,build,ecosystem,version_history"))
++}
++
++pub fn exec(gctx: &mut GlobalContext, args: &ArgMatches) -> CliResult {
++    gctx.shell().status("Extracting", "Hugging Face dataset")?;
++
++    let project_path_str = args.get_one::<String>("path").unwrap();
++    let project_path = Path::new(project_path_str);
++
++    let output_dir_str = args.get_one::<String>("output").unwrap();
++    let output_dir = Path::new(output_dir_str);
++
++    let include_deps = args.get_flag("include-deps");
++
++    let phases_str = args.get_one::<String>("phases").unwrap();
++    let phases: Vec<CargoExtractionPhase> = phases_str.split(',')
++        .map(|s| s.trim())
++        .filter_map(|s| match s {
++            "metadata" => Some(CargoExtractionPhase::ProjectMetadata),
++            "dependencies" => Some(CargoExtractionPhase::DependencyAnalysis),
++            "source_code" => Some(CargoExtractionPhase::SourceCodeAnalysis),
++            "build" => Some(CargoExtractionPhase::BuildExtractionPhase),
++            "ecosystem" => Some(CargoExtractionPhase::EcosystemAnalysis),
++            "version_history" => Some(CargoExtractionPhase::VersionHistory),
++            _ => None,
++        })
++        .collect();
++
++    if phases.is_empty() {
++        return Err(CliError::new("No valid phases specified.", 1));
++    }
++
++    let mut extractor = Cargo2HfExtractor::new()
++        .map_err(|e| CliError::new(format!("Failed to create extractor: {}", e), 1))?;
++
++    // Run the async extraction logic
++    let rt = tokio::runtime::Runtime::new().unwrap();
++    rt.block_on(async {
++        extractor.extract_project_to_parquet(
++            project_path,
++            &phases,
++            output_dir,
++            include_deps,
++        ).map_err(|e| CliError::new(format!("Extraction failed: {}", e), 1))
++    })?;
++
++    gctx.shell().status("Finished", "Hugging Face dataset extraction")?;
++
++    Ok(())
++}
+diff --git a/src/bin/cargo/commands/mod.rs b/src/bin/cargo/commands/mod.rs
+index b507226f3..a3502fc94 100644
+--- a/src/bin/cargo/commands/mod.rs
++++ b/src/bin/cargo/commands/mod.rs
+@@ -41,6 +41,7 @@ pub fn builtin() -> Vec<Command> {
+         verify_project::cli(),
+         version::cli(),
+         yank::cli(),
++        hf_export::cli(),
+     ]
+ }
+ 
+@@ -87,6 +88,7 @@ pub fn builtin_exec(cmd: &str) -> Option<Exec> {
+         "verify-project" => verify_project::exec,
+         "version" => version::exec,
+         "yank" => yank::exec,
++        "hf-export" => hf_export::exec,
+         _ => return None,
+     };
+     Some(f)
+@@ -131,3 +133,4 @@ pub mod vendor;
+ pub mod verify_project;
+ pub mod version;
+ pub mod yank;
++pub mod hf_export;
+
+commit d78a3456ee5b04a88de79326efe2d089e9cb237d
+Author: mike dupont <h4@solfunmeme.com>
+Date:   Thu Aug 28 21:34:57 2025 -0400
+
+    Chore: Explicitly define package metadata and dependencies in Cargo.toml files.
+
+diff --git a/Cargo.toml b/Cargo.toml
+index 30dfc6095..ef2e3d77c 100644
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -137,11 +137,11 @@ self_named_module_files = "warn"
+ [package]
+ name = "cargo"
+ version = "0.92.0"
+-edition.workspace = true
+-license.workspace = true
+-rust-version = "1.89"  # MSRV:1
+-homepage = "https://doc.rust-lang.org/cargo/index.html"
+-repository.workspace = true
++edition = "2024"
++license = "MIT OR Apache-2.0"
++rust-version = "1.89"
++homepage = "https://github.com/rust-lang/cargo"
++repository = "https://github.com/rust-lang/cargo"
+ documentation = "https://docs.rs/cargo"
+ description = """
+ Cargo, a package manager for Rust.
+@@ -152,74 +152,74 @@ name = "cargo"
+ path = "src/cargo/lib.rs"
+ 
+ [dependencies]
+-annotate-snippets.workspace = true
+-anstream.workspace = true
+-anstyle.workspace = true
+-anyhow.workspace = true
+-base64.workspace = true
+-blake3.workspace = true
+-cargo-credential.workspace = true
+-cargo-platform.workspace = true
+-cargo-util-schemas.workspace = true
+-cargo-util.workspace = true
+-clap = { workspace = true, features = ["wrap_help"] }
+-clap_complete.workspace = true
+-color-print.workspace = true
+-crates-io.workspace = true
+-curl = { workspace = true, features = ["http2"] }
+-curl-sys.workspace = true
+-filetime.workspace = true
+-flate2.workspace = true
+-git2.workspace = true
+-git2-curl.workspace = true
+-gix.workspace = true
+-glob.workspace = true
+-hex.workspace = true
+-hmac.workspace = true
+-home.workspace = true
+-http-auth.workspace = true
+-ignore.workspace = true
+-im-rc.workspace = true
+-indexmap.workspace = true
+-itertools.workspace = true
+-jiff.workspace = true
+-jobserver.workspace = true
+-lazycell.workspace = true
+-libgit2-sys.workspace = true
+-memchr.workspace = true
+-opener.workspace = true
+-os_info.workspace = true
+-pasetors.workspace = true
+-pathdiff.workspace = true
+-rand.workspace = true
+-regex.workspace = true
+-rusqlite.workspace = true
+-rustc-hash.workspace = true
+-rustc-stable-hash.workspace = true
+-rustfix.workspace = true
+-same-file.workspace = true
+-semver.workspace = true
+-serde = { workspace = true, features = ["derive"] }
+-serde-untagged.workspace = true
+-serde_ignored.workspace = true
+-serde_json = { workspace = true, features = ["raw_value"] }
+-sha1.workspace = true
+-shell-escape.workspace = true
+-supports-hyperlinks.workspace = true
+-supports-unicode.workspace = true
+-tar.workspace = true
+-tempfile.workspace = true
+-thiserror.workspace = true
+-time.workspace = true
+-toml = { workspace = true, features = ["std", "serde", "parse", "display", "preserve_order"] }
+-toml_edit.workspace = true
+-tracing = { workspace = true, features = ["attributes"] }
+-tracing-subscriber.workspace = true
+-unicase.workspace = true
+-unicode-width.workspace = true
+-unicode-xid.workspace = true
+-url.workspace = true
+-walkdir.workspace = true
++annotate-snippets = "0.11.5"
++anstream = "0.6.20"
++anstyle = "1.0.11"
++anyhow = "1.0.98"
++base64 = "0.22.1"
++blake3 = "1.8.2"
++cargo-credential = { version = "0.4.2", path = "credential/cargo-credential" }
++cargo-platform = { version = "0.3.0", path = "crates/cargo-platform" }
++cargo-util-schemas = { version = "0.10.1", path = "crates/cargo-util-schemas" }
++cargo-util = { version = "0.2.24", path = "crates/cargo-util" }
++clap = { version = "4.5.43", features = ["wrap_help"] }
++clap_complete = { version = "4.5.56", features = ["unstable-dynamic"] }
++color-print = "0.3.7"
++crates-io = { version = "0.40.14", path = "crates/crates-io" }
++curl = { version = "0.4.48", features = ["http2"] }
++curl-sys = "0.4.82"
++filetime = "0.2.25"
++flate2 = { version = "1.1.2", default-features = false, features = ["zlib-rs"] }
++git2 = "0.20.2"
++git2-curl = "0.21.0"
++gix = { version = "0.73.0", default-features = false, features = ["progress-tree", "parallel", "dirwalk", "status"] }
++glob = "0.3.3"
++hex = "0.4.3"
++hmac = "0.12.1"
++home = "0.5.11"
++http-auth = { version = "0.1.10", default-features = false }
++ignore = "0.4.23"
++im-rc = "15.1.0"
++indexmap = "2.10.0"
++itertools = "0.14.0"
++jiff = { version = "0.2.15", default-features = false, features = ["std"] }
++jobserver = "0.1.33"
++lazycell = "1.3.0"
++libgit2-sys = "0.18.2"
++memchr = "2.7.5"
++opener = "0.8.2"
++os_info = { version = "3.12.0", default-features = false }
++pasetors = { version = "0.7.7", features = ["v3", "paserk", "std", "serde"] }
++pathdiff = "0.2.3"
++rand = "0.9.2"
++regex = "1.11.1"
++rusqlite = { version = "0.37.0", features = ["bundled"] }
++rustc-hash = "2.1.1"
++rustc-stable-hash = "0.1.2"
++rustfix = { version = "0.9.2", path = "crates/rustfix" }
++same-file = "1.0.6"
++semver = { version = "1.0.26", features = ["serde"] }
++serde = { version = "1.0.219", features = ["derive"] }
++serde-untagged = "0.1.7"
++serde_ignored = "0.1.12"
++serde_json = { version = "1.0.142", features = ["raw_value"] }
++sha1 = "0.10.6"
++shell-escape = "0.1.5"
++supports-hyperlinks = "3.1.0"
++supports-unicode = "3.0.0"
++tar = { version = "0.4.44", default-features = false }
++tempfile = "3.20.0"
++thiserror = "2.0.12"
++time = { version = "0.3.41", features = ["parsing", "formatting", "serde"] }
++toml = { version = "0.9.5", default-features = false, features = ["std", "serde", "parse", "display", "preserve_order"] }
++toml_edit = { version = "0.23.3", features = ["serde"] }
++tracing = { version = "0.1.41", default-features = false, features = ["attributes"] }
++tracing-subscriber = { version = "0.3.19", features = ["env-filter"] }
++unicase = "2.8.1"
++unicode-width = "0.2.1"
++unicode-xid = "0.2.6"
++url = "2.5.4"
++walkdir = "2.5.0"
+ 
+ [target.'cfg(target_has_atomic = "64")'.dependencies]
+ tracing-chrome.workspace = true
+diff --git a/crates/cargo-util-schemas/Cargo.toml b/crates/cargo-util-schemas/Cargo.toml
+index 4c393e268..dfec3297d 100644
+--- a/crates/cargo-util-schemas/Cargo.toml
++++ b/crates/cargo-util-schemas/Cargo.toml
+@@ -1,30 +1,30 @@
+ [package]
+ name = "cargo-util-schemas"
+ version = "0.10.1"
+-rust-version = "1.89"  # MSRV:1
+-edition.workspace = true
+-license.workspace = true
+-homepage.workspace = true
+-repository.workspace = true
++rust-version = "1.89"
++edition = "2024"
++license = "MIT OR Apache-2.0"
++homepage = "https://github.com/rust-lang/cargo"
++repository = "https://github.com/rust-lang/cargo"
+ description = "Deserialization schemas for Cargo"
+ 
+ [dependencies]
+-schemars = { workspace = true, features = ["preserve_order", "semver1"], optional = true }
+-semver.workspace = true
+-serde = { workspace = true, features = ["derive"] }
+-serde_json = { workspace = true, optional = true }
+-serde-untagged.workspace = true
+-serde-value.workspace = true
+-thiserror.workspace = true
+-toml = { workspace = true, features = ["serde"] }
+-unicode-xid.workspace = true
+-url.workspace = true
++schemars = { version = "1.0.4", features = ["preserve_order", "semver1"], optional = true }
++semver = { version = "1.0.26", features = ["serde"] }
++serde = { version = "1.0.219", features = ["derive"] }
++serde_json = { version = "1.0.142", optional = true }
++serde-untagged = "0.1.7"
++serde-value = "0.7.0"
++thiserror = "2.0.12"
++toml = { version = "0.9.5", features = ["serde"] }
++unicode-xid = "0.2.6"
++url = "2.5.4"
+ 
+ [lints]
+ workspace = true
+ 
+ [dev-dependencies]
+-snapbox.workspace = true
++snapbox = { version = "0.6.21", features = ["diff", "dir", "term-svg", "regex", "json"] }
+ serde_json.workspace = true
+ 
+ [features]
+diff --git a/crates/cargo-util/Cargo.toml b/crates/cargo-util/Cargo.toml
+index 6c3f05a6e..798868622 100644
+--- a/crates/cargo-util/Cargo.toml
++++ b/crates/cargo-util/Cargo.toml
+@@ -1,35 +1,35 @@
+ [package]
+ name = "cargo-util"
+ version = "0.2.24"
+-rust-version = "1.89"  # MSRV:1
+-edition.workspace = true
+-license.workspace = true
+-homepage.workspace = true
+-repository.workspace = true
++rust-version = "1.89"
++edition = "2024"
++license = "MIT OR Apache-2.0"
++homepage = "https://github.com/rust-lang/cargo"
++repository = "https://github.com/rust-lang/cargo"
+ description = "Miscellaneous support code used by Cargo."
+ 
+ [dependencies]
+-anyhow.workspace = true
+-filetime.workspace = true
+-hex.workspace = true
+-ignore.workspace = true
+-jobserver.workspace = true
+-same-file.workspace = true
+-sha2.workspace = true
+-shell-escape.workspace = true
+-tempfile.workspace = true
+-tracing.workspace = true
+-walkdir.workspace = true
++anyhow = "1.0.98"
++filetime = "0.2.25"
++hex = "0.4.3"
++ignore = "0.4.23"
++jobserver = "0.1.33"
++same-file = "1.0.6"
++sha2 = "0.10.9"
++shell-escape = "0.1.5"
++tempfile = "3.20.0"
++tracing = { version = "0.1.41", default-features = false, features = ["std"] }
++walkdir = "2.5.0"
+ 
+ [target.'cfg(target_os = "macos")'.dependencies]
+-core-foundation.workspace = true
++core-foundation = { version = "0.10.1", features = ["mac_os_10_7_support"] }
+ 
+ [target.'cfg(unix)'.dependencies]
+-libc.workspace = true
++libc = "0.2.174"
+ 
+ [target.'cfg(windows)'.dependencies]
+-miow.workspace = true
+-windows-sys = { workspace = true, features = ["Win32_Storage_FileSystem", "Win32_Foundation", "Win32_System_Console"] }
++miow = "0.6.0"
++windows-sys = { version = "0.60", features = ["Win32_Storage_FileSystem", "Win32_Foundation", "Win32_System_Console"] }
+ 
+ [lints]
+ workspace = true
+diff --git a/crates/crates-io/Cargo.toml b/crates/crates-io/Cargo.toml
+index f0584f250..644b906a1 100644
+--- a/crates/crates-io/Cargo.toml
++++ b/crates/crates-io/Cargo.toml
+@@ -1,11 +1,11 @@
+ [package]
+ name = "crates-io"
+ version = "0.40.14"
+-rust-version = "1.89"  # MSRV:1
+-edition.workspace = true
+-license.workspace = true
+-homepage.workspace = true
+-repository.workspace = true
++rust-version = "1.89"
++edition = "2024"
++license = "MIT OR Apache-2.0"
++homepage = "https://github.com/rust-lang/cargo"
++repository = "https://github.com/rust-lang/cargo"
+ description = """
+ Helpers for interacting with crates.io
+ """
+@@ -15,12 +15,12 @@ name = "crates_io"
+ path = "lib.rs"
+ 
+ [dependencies]
+-curl.workspace = true
+-percent-encoding.workspace = true
+-serde = { workspace = true, features = ["derive"] }
+-serde_json.workspace = true
+-thiserror.workspace = true
+-url.workspace = true
++curl = "0.4.48"
++percent-encoding = "2.3.1"
++serde = { version = "1.0.219", features = ["derive"] }
++serde_json = "1.0.142"
++thiserror = "2.0.12"
++url = "2.5.4"
+ 
+ [lints]
+ workspace = true

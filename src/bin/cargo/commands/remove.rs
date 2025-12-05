@@ -14,6 +14,7 @@ use cargo::util::toml_mut::dependency::MaybeWorkspace;
 use cargo::util::toml_mut::dependency::Source;
 use cargo::util::toml_mut::manifest::DepTable;
 use cargo::util::toml_mut::manifest::LocalManifest;
+use clap_complete::CompletionCandidate;
 
 pub fn cli() -> clap::Command {
     clap::Command::new("remove")
@@ -26,9 +27,9 @@ pub fn cli() -> clap::Command {
             .num_args(1..)
             .value_name("DEP_ID")
             .help("Dependencies to be removed")
-            .add(clap_complete::ArgValueCandidates::new(
-                get_direct_dependencies_pkg_name_candidates,
-            ))])
+            .add(clap_complete::ArgValueCandidates::new(|| {
+                get_direct_dependencies_pkg_name_candidates().into_iter().map(CompletionCandidate::new).collect()
+            }))])
         .arg_dry_run("Don't actually write the manifest")
         .arg_silent_suggestion()
         .next_help_heading("Section")

@@ -590,90 +590,48 @@ fn with_authentication<T, F>(
 where
     F: FnMut(&mut git2::Credentials<'_>) -> CargoResult<T>,
 {
-    let mut cred_helper = git2::CredentialHelper::new(url);
-    cred_helper.config(cfg);
+
 
     let mut ssh_username_requested = false;
-    let mut cred_helper_bad = None;
+
     let mut ssh_agent_attempts = Vec::new();
     let mut any_attempts = false;
     let mut tried_sshkey = false;
     let mut url_attempt = None;
 
     let orig_url = url;
-    let mut res = f(&mut |url, username, allowed| {
+    let mut res = f(&mut |url_in_cb, username_in_cb, allowed| {
         any_attempts = true;
-        if url != orig_url {
-            url_attempt = Some(url.to_string());
+        if url_in_cb != orig_url {
+            url_attempt = Some(url_in_cb.to_string());
         }
-        // libgit2's "USERNAME" authentication actually means that it's just
-        // asking us for a username to keep going. This is currently only really
-        // used for SSH authentication and isn't really an authentication type.
-        // The logic currently looks like:
-        //
-        //      let user = ...;
-        //      if (user.is_null())
-        //          user = callback(USERNAME, null, ...);
-        //
-        //      callback(SSH_KEY, user, ...)
-        //
-        // So if we're being called here then we know that (a) we're using ssh
-        // authentication and (b) no username was specified in the URL that
-        // we're trying to clone. We need to guess an appropriate username here,
-        // but that may involve a few attempts. Unfortunately we can't switch
-        // usernames during one authentication session with libgit2, so to
-        // handle this we bail out of this authentication session after setting
-        // the flag `ssh_username_requested`, and then we handle this below.
         if allowed.contains(git2::CredentialType::USERNAME) {
-            debug_assert!(username.is_none());
+            debug_assert!(username_in_cb.is_none());
             ssh_username_requested = true;
             return Err(git2::Error::from_str("gonna try usernames later"));
         }
-
-        // An "SSH_KEY" authentication indicates that we need some sort of SSH
-        // authentication. This can currently either come from the ssh-agent
-        // process or from a raw in-memory SSH key. Cargo only supports using
-        // ssh-agent currently.
-        //
-        // If we get called with this then the only way that should be possible
-        // is if a username is specified in the URL itself (e.g., `username` is
-        // Some), hence the unwrap() here. We try custom usernames down below.
         if allowed.contains(git2::CredentialType::SSH_KEY) && !tried_sshkey {
-            // If ssh-agent authentication fails, libgit2 will keep
-            // calling this callback asking for other authentication
-            // methods to try. Make sure we only try ssh-agent once,
-            // to avoid looping forever.
             tried_sshkey = true;
-            let username = username.unwrap();
+            let username = username_in_cb.unwrap();
             debug_assert!(!ssh_username_requested);
             ssh_agent_attempts.push(username.to_string());
             return git2::Cred::ssh_key_from_agent(username);
         }
-
-        // Sometimes libgit2 will ask for a username/password in plaintext. This
-        // is where Cargo would have an interactive prompt if we supported it,
-        // but we currently don't! Right now the only way we support fetching a
-        // plaintext password is through the `credential.helper` support, so
-        // fetch that here.
-        //
-        // If ssh-agent authentication fails, libgit2 will keep calling this
-        // callback asking for other authentication methods to try. Check
-        // cred_helper_bad to make sure we only try the git credential helper
-        // once, to avoid looping forever.
-        if allowed.contains(git2::CredentialType::USER_PASS_PLAINTEXT) && cred_helper_bad.is_none()
-        {
-            let r = git2::Cred::credential_helper(cfg, url, username);
-            cred_helper_bad = Some(r.is_err());
-            return r;
+        if allowed.contains(git2::CredentialType::USER_PASS_PLAINTEXT) {
+            if let Some(username) = username_in_cb {
+                // Attempt to get userpass from git config
+                                if let Ok(mut cred) = git2::Cred::default() { // default will try config
+                                    if (cred.credtype() & git2::CredentialType::USER_PASS_PLAINTEXT.bits()) != 0 && cred.has_username() { // Changed
+                                        return Ok(cred);
+                                    }
+                                }                // Fallback to userpass_plaintext if username is known but password is not
+                // This would typically involve prompting, but we're non-interactive.
+                // For now, only try if username is available.
+            }
         }
-
-        // I'm... not sure what the DEFAULT kind of authentication is, but seems
-        // easy to support?
         if allowed.contains(git2::CredentialType::DEFAULT) {
             return git2::Cred::default();
         }
-
-        // Whelp, we tried our best
         Err(git2::Error::from_str("no authentication methods succeeded"))
     });
 
@@ -694,45 +652,35 @@ where
         if let Ok(s) = gctx.get_env("USER").or_else(|_| gctx.get_env("USERNAME")) {
             attempts.push(s.to_string());
         }
-        if let Some(ref s) = cred_helper.username {
-            attempts.push(s.clone());
-        }
+        // Removed `cred_helper.username` as CredentialHelper is removed.
+        // We will rely on environment variables and "git" as username candidates.
 
         while let Some(s) = attempts.pop() {
-            // We should get `USERNAME` first, where we just return our attempt,
-            // and then after that we should get `SSH_KEY`. If the first attempt
-            // fails we'll get called again, but we don't have another option so
-            // we bail out.
-            let mut attempts = 0;
-            res = f(&mut |_url, username, allowed| {
+            let current_username_attempt = s.clone();
+            let mut ssh_key_attempt_count = 0; // Track attempts within this specific username's session
+
+            res = f(&mut |_url_in_cb, username_in_cb, allowed| {
                 if allowed.contains(git2::CredentialType::USERNAME) {
-                    return git2::Cred::username(&s);
+                    return git2::Cred::username(&current_username_attempt);
                 }
                 if allowed.contains(git2::CredentialType::SSH_KEY) {
-                    debug_assert_eq!(Some(&s[..]), username);
-                    attempts += 1;
-                    if attempts == 1 {
-                        ssh_agent_attempts.push(s.to_string());
-                        return git2::Cred::ssh_key_from_agent(&s);
+                    debug_assert_eq!(Some(&current_username_attempt[..]), username_in_cb);
+                    ssh_key_attempt_count += 1;
+                    if ssh_key_attempt_count == 1 {
+                        ssh_agent_attempts.push(current_username_attempt.clone());
+                        return git2::Cred::ssh_key_from_agent(&current_username_attempt);
                     }
                 }
                 Err(git2::Error::from_str("no authentication methods succeeded"))
             });
 
-            // If we made two attempts then that means:
-            //
-            // 1. A username was requested, we returned `s`.
-            // 2. An ssh key was requested, we returned to look up `s` in the
-            //    ssh agent.
-            // 3. For whatever reason that lookup failed, so we were asked again
-            //    for another mode of authentication.
-            //
-            // Essentially, if `attempts == 2` then in theory the only error was
-            // that this username failed to authenticate (e.g., no other network
-            // errors happened). Otherwise something else is funny so we bail
-            // out.
-            if attempts != 2 {
-                break;
+            // If we made a successful SSH_KEY attempt (count == 1), and then
+            // libgit2 called us again, it means that specific SSH_KEY attempt failed.
+            // We should try the next username.
+            if res.is_err() && ssh_key_attempt_count == 1 {
+                 continue; // Try next username
+            } else if res.is_ok() {
+                break; // Authentication successful
             }
         }
     }
@@ -741,9 +689,6 @@ where
         Err(e) => e,
     };
 
-    // In the case of an authentication failure (where we tried something) then
-    // we try to give a more helpful error message about precisely what we
-    // tried.
     if any_attempts {
         let mut msg = "failed to authenticate when downloading \
                        repository"
@@ -768,28 +713,10 @@ where
                 names
             ));
         }
-        if let Some(failed_cred_helper) = cred_helper_bad {
-            if failed_cred_helper {
-                msg.push_str(
-                    "\n* attempted to find username/password via \
-                     git's `credential.helper` support, but failed",
-                );
-            } else {
-                msg.push_str(
-                    "\n* attempted to find username/password via \
-                     `credential.helper`, but maybe the found \
-                     credentials were incorrect",
-                );
-            }
-        }
         msg.push_str("\n\n");
         msg.push_str("if the git CLI succeeds then `net.git-fetch-with-cli` may help here\n");
         msg.push_str("https://doc.rust-lang.org/cargo/reference/config.html#netgit-fetch-with-cli");
         err = err.context(msg);
-
-        // Otherwise if we didn't even get to the authentication phase them we may
-        // have failed to set up a connection, in these cases hint on the
-        // `net.git-fetch-with-cli` configuration option.
     } else if let Some(e) = err.downcast_ref::<git2::Error>() {
         match e.class() {
             ErrorClass::Net
@@ -810,10 +737,6 @@ where
                 err = err.context(msg);
             }
             ErrorClass::Callback => {
-                // This unwraps the git2 error. We're using the callback error
-                // specifically to convey errors from Rust land through the C
-                // callback interface. We don't need the `; class=Callback
-                // (26)` that gets tacked on to the git2 error message.
                 err = anyhow::format_err!("{}", e.message());
             }
             _ => {}
