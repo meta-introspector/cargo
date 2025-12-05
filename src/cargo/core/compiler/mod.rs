@@ -1091,9 +1091,12 @@ fn append_crate_version_flag(unit: &Unit, rustdoc: &mut ProcessBuilder) {
 ///
 /// [`--cap-lints`]: https://doc.rust-lang.org/nightly/rustc/lints/levels.html#capping-lints
 fn add_cap_lints(bcx: &BuildContext<'_, '_>, unit: &Unit, cmd: &mut ProcessBuilder) {
+    // Check if --quiet is set to suppress all warnings
+    if bcx.gctx.shell().verbosity() == Verbosity::Quiet {
+        cmd.arg("--cap-lints").arg("allow");
     // If this is an upstream dep we don't want warnings from, turn off all
     // lints.
-    if !unit.show_warnings(bcx.gctx) {
+    } else if !unit.show_warnings(bcx.gctx) {
         cmd.arg("--cap-lints").arg("allow");
 
     // If this is an upstream dep but we *do* want warnings, make sure that they
