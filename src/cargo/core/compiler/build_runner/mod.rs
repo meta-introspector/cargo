@@ -25,6 +25,8 @@ use super::layout::Layout;
 use super::lto::Lto;
 use super::unit_graph::UnitDep;
 use super::{BuildContext, Compilation, CompileKind, CompileMode, Executor, FileFlavor};
+use crate::core::compiler::invocation_args::{lto_args, features_args, check_cfg_args};
+use crate::core::compiler::output_depinfo::output_depinfo;
 
 mod compilation_files;
 use self::compilation_files::CompilationFiles;
@@ -235,9 +237,9 @@ impl<'a, 'gctx> BuildRunner<'a, 'gctx> {
             if unit.mode.is_doc_test() {
                 let mut unstable_opts = false;
                 let mut args = compiler::extern_args(&self, unit, &mut unstable_opts)?;
-                args.extend(compiler::lto_args(&self, unit));
-                args.extend(compiler::features_args(unit));
-                args.extend(compiler::check_cfg_args(unit));
+                args.extend(lto_args(&self, unit));
+                args.extend(features_args(unit));
+                args.extend(check_cfg_args(unit));
 
                 let script_metas = self.find_build_script_metadatas(unit);
                 if let Some(meta_vec) = script_metas.clone() {
@@ -283,7 +285,7 @@ impl<'a, 'gctx> BuildRunner<'a, 'gctx> {
                 });
             }
 
-            super::output_depinfo(&mut self, unit)?;
+            output_depinfo(&mut self, unit)?;
         }
 
         for (script_meta, output) in self.build_script_outputs.lock().unwrap().iter() {

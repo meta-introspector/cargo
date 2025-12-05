@@ -46,6 +46,7 @@ use crate::core::compiler::{BuildConfig, BuildContext, BuildRunner, Compilation}
 use crate::core::compiler::{CompileKind, CompileTarget, RustcTargetData, Unit};
 use crate::core::compiler::{CrateType, TargetInfo, standard_lib};
 use crate::core::compiler::{DefaultExecutor, Executor, UnitInterner};
+use crate::core::compiler::DefaultReproArtifactGenerator;
 use crate::core::profiles::Profiles;
 use crate::core::resolver::features::{self, CliFeatures, FeaturesFor};
 use crate::core::resolver::{HasDevUnits, Resolve};
@@ -128,7 +129,8 @@ impl CompileOptions {
 ///
 /// This uses the [`DefaultExecutor`]. To use a custom [`Executor`], see [`compile_with_exec`].
 pub fn compile<'a>(ws: &Workspace<'a>, options: &CompileOptions) -> CargoResult<Compilation<'a>> {
-    let exec: Arc<dyn Executor> = Arc::new(DefaultExecutor);
+    let repro_artifact_generator = Arc::new(DefaultReproArtifactGenerator {});
+    let exec: Arc<dyn Executor> = Arc::new(DefaultExecutor::new(repro_artifact_generator));
     compile_with_exec(ws, options, &exec)
 }
 

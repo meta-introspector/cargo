@@ -25,6 +25,8 @@ use crate::util::errors::CargoResult;
 use crate::util::interning::InternedString;
 use crate::core::compiler::unit_graph::UnitDep;
 use crate::core::compiler::build_context::FileFlavor;
+use crate::core::compiler::LinkArgTarget;
+use crate::core::compiler::UnitHash;
 use annotate_snippets::Level;
 use crate::util::{internal};
 use cargo_util::{ProcessBuilder, paths};

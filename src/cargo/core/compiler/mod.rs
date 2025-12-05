@@ -27,7 +27,6 @@
 //!   turning into a compiler invocation in a later phase.
 //!
 //! [`ops::cargo_compile::compile`]: crate::ops::compile
-
 pub mod artifact;
 pub mod build_config;
 pub(crate) mod build_context;
@@ -50,37 +49,34 @@ mod timings;
 mod unit;
 pub mod unit_dependencies;
 pub mod unit_graph;
-
-// New modules
 mod compilation_orchestration;
 mod invocation_args;
 mod dependency_args;
 mod path_remapping;
 mod artifact_linking;
-
-
-
-
+mod manifest_error_context;
+mod output_options;
+mod repro_script_generator;
 pub use build_config::{BuildConfig, CompileMode, MessageFormat, TimingOutput};
 pub use build_context::{BuildContext, FileFlavor, FileType, RustcTargetData, TargetInfo};
 pub use build_runner::{BuildRunner, Metadata, UnitHash};
 pub use compilation::{Compilation, Doctest, UnitOutput};
 pub use compile_kind::{CompileKind, CompileKindFallback, CompileTarget};
 pub use crate_type::CrateType;
-pub use custom_build::{LinkArgTarget, BuildOutput, BuildScriptOutputs, BuildScripts, LibraryPath};
+pub use custom_build::{
+    LinkArgTarget, BuildOutput, BuildScriptOutputs, BuildScripts, LibraryPath,
+};
 pub(crate) use fingerprint::DirtyReason;
 pub use fingerprint::RustdocFingerprint;
 pub use job_queue::Freshness;
 pub(crate) use layout::Layout;
 pub use lto::Lto;
-
-
-
 pub use future_incompat::FutureIncompatReport;
-
 pub use unit::{Unit, UnitInterner};
-
 pub use timings::CompilationSection;
+pub use manifest_error_context::ManifestErrorContext;
+pub use output_options::OutputOptions;
+pub use repro_script_generator::{GenerateReproArtifact, DefaultReproArtifactGenerator};
 pub use crate::core::{Feature, PackageId, Target, Verbosity};
 pub use crate::core::manifest::TargetSourcePath;
 pub use crate::core::profiles::{PanicStrategy, Profile, StripInner};
@@ -94,11 +90,13 @@ pub use crate::util::{add_path_args, internal};
 pub use cargo_util::{ProcessBuilder, ProcessError, paths};
 pub use cargo_util_schemas::manifest::{TomlDebugInfo, TomlTrimPaths, TomlTrimPathsValue};
 pub use rustfix::diagnostics::Applicability;
-
-
-// Re-exports from new modules
-pub use compilation_orchestration::{compile, Executor, DefaultExecutor, OutputOptions};
+pub use compilation_orchestration::{compile, Executor, DefaultExecutor};
 pub use invocation_args::{prepare_rustc_process, prepare_rustdoc_process};
-pub use artifact_linking::{link_targets, envify}; // Assuming envify might be needed outside
-pub use dependency_args::{add_native_deps, add_plugin_deps, add_custom_flags, build_deps_args, extern_args};
-pub use path_remapping::{trim_paths_args, trim_paths_args_rustdoc, sysroot_remap, package_remap, build_dir_remap};
+pub use artifact_linking::{link_targets, envify};
+pub use dependency_args::{
+    add_native_deps, add_plugin_deps, add_custom_flags, build_deps_args, extern_args,
+};
+pub use path_remapping::{
+    trim_paths_args, trim_paths_args_rustdoc, sysroot_remap, package_remap,
+    build_dir_remap,
+};

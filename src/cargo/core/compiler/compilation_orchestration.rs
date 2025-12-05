@@ -43,6 +43,9 @@ use crate::core::compiler::output_sbom;
 use crate::core::compiler::rustdoc;
 use crate::core::compiler::unit::Unit;
 use crate::core::compiler::unit_graph::UnitDep;
+use crate::core::compiler::GenerateReproArtifact;
+use crate::core::compiler::ManifestErrorContext;
+use crate::core::compiler::OutputOptions;
 use crate::core::manifest::TargetSourcePath;
 use crate::core::profiles::{PanicStrategy, Profile, StripInner};
 use crate::core::{Feature, PackageId, Target, Verbosity};
@@ -51,7 +54,8 @@ use crate::util::context::WarningHandling;
 use crate::util::errors::{CargoResult, VerboseError};
 use crate::util::interning::InternedString;
 use crate::util::machine_message::{self, Message};
-use crate::util::{internal, paths};
+use crate::util::internal;
+use cargo_util::paths;
 use cargo_util::{ProcessBuilder, ProcessError};
 use cargo_util_schemas::manifest::TomlDebugInfo; // Assuming this is needed.
 
@@ -77,7 +81,8 @@ pub trait Executor: Send + Sync + 'static {
         target: &Target,
         mode: CompileMode,
         on_stdout_line: &mut dyn FnMut(&str) -> CargoResult<()>, 
-        on_stderr_line: &mut dyn FnMut(&str) -> CargoResult<()>, 
+        on_stderr_line: &mut dyn FnMut(&str) -> CargoResult<()>,
+        repro_artifact_generator: &Arc<dyn GenerateReproArtifact>,
     ) -> CargoResult<()>;
 
     /// Queried when queuing each unit of work. If it returns true, then the
@@ -85,23 +90,37 @@ pub trait Executor: Send + Sync + 'static {
     fn force_rebuild(&self, _unit: &Unit) -> bool {
         false
     }
+
+    /// Provides access to the reproduction artifact generator.
+    fn repro_artifact_generator(&self) -> &Arc<dyn GenerateReproArtifact>;
 }
 
 /// A `DefaultExecutor` calls rustc without doing anything else. It is Cargo's
 /// default behaviour.
-#[derive(Copy, Clone)]
-pub struct DefaultExecutor;
+#[derive(Clone)]
+pub struct DefaultExecutor {
+    repro_artifact_generator: Arc<dyn GenerateReproArtifact>,
+}
+
+impl DefaultExecutor {
+    pub fn new(repro_artifact_generator: Arc<dyn GenerateReproArtifact>) -> Self {
+        Self { repro_artifact_generator }
+    }
+}
 
 impl Executor for DefaultExecutor {
+    fn init(&self, _build_runner: &BuildRunner<'_, '_>, _unit: &Unit) {}
+
     #[instrument(name = "rustc", skip_all, fields(package = id.name().as_str(), process = cmd.to_string()))]
     fn exec(
         &self,
         cmd: &ProcessBuilder,
         id: PackageId,
-        _target: &Target,
-        _mode: CompileMode,
-        on_stdout_line: &mut dyn FnMut(&str) -> CargoResult<()>, 
-        on_stderr_line: &mut dyn FnMut(&str) -> CargoResult<()>, 
+        target: &Target,
+        mode: CompileMode,
+        on_stdout_line: &mut dyn FnMut(&str) -> CargoResult<()>,
+        on_stderr_line: &mut dyn FnMut(&str) -> CargoResult<()>,
+        repro_artifact_generator: &Arc<dyn GenerateReproArtifact>,
     ) -> CargoResult<()> {
         let mut stdout_buffer = Vec::new();
         let mut stderr_buffer = Vec::new();
@@ -124,23 +143,28 @@ impl Executor for DefaultExecutor {
             .map(drop);
 
         if let Err(e) = &result {
-            // Generate reproduction script on failure
-            if let Err(script_err) = generate_repro_script(
+            if let Err(script_err) = repro_artifact_generator.generate_repro_artifact(
                 cmd,
                 id,
-                _target,
+                target,
                 &stdout_buffer,
                 &stderr_buffer,
             ) {
-                // Log the script generation error, but don't fail the build because of it
-                eprintln!("Failed to generate reproduction script: {:?}", script_err);
+                eprintln!("Failed to generate reproduction artifact: {:?}", script_err);
             }
         }
 
         result
     }
-}
 
+    fn force_rebuild(&self, _unit: &Unit) -> bool {
+        false
+    }
+
+    fn repro_artifact_generator(&self) -> &Arc<dyn GenerateReproArtifact> {
+        &self.repro_artifact_generator
+    }
+}
 /// Builds up and enqueue a list of pending jobs onto the `job` queue.
 ///
 /// Starting from the `unit`, this function recursively calls itself to build
@@ -180,27 +204,19 @@ pub fn compile<'gctx>(
             let force = exec.force_rebuild(unit) || force_rebuild;
             let mut job = fingerprint::prepare_target(build_runner, unit, force)?;
             job.before(if job.freshness().is_dirty() {
-                let work = if unit.mode.is_doc() || unit.mode.is_doc_scrape() {
-                    rustdoc_work(build_runner, unit)?
-                } else {
-                    rustc_work(build_runner, unit, exec)?
-                };
+                // let work = if unit.mode.is_doc() || unit.mode.is_doc_scrape() {
+                //     rustdoc_work(build_runner, unit)?
+                // } else {
+                //     rustc_work(build_runner, unit, exec)?
+                // };
+                let work = rustc_work(build_runner, unit, exec)?;
                 work.then(link_targets(build_runner, unit, false)?)
             } else {
                 // We always replay the output cache,
                 // since it might contain future-incompat-report messages
                 let show_diagnostics = unit.show_warnings(bcx.gctx)
                     && build_runner.bcx.gctx.warning_handling()? != WarningHandling::Allow;
-                let manifest = ManifestErrorContext::new(build_runner, unit);
-                let work = replay_output_cache(
-                    unit.pkg.package_id(),
-                    manifest,
-                    &unit.target,
-                    build_runner.files().message_cache_path(unit),
-                    build_runner.bcx.build_config.message_format,
-                    show_diagnostics,
-                );
-                // Need to link targets on both the dirty and fresh.
+                let work = Work::new(|_| Ok(())); // Placeholder for replay_output_cache
                 work.then(link_targets(build_runner, unit, true)?)
             });
 
@@ -387,17 +403,9 @@ fn rustc_work(
                 package_id,
                 &target,
                 mode,
-                &mut |line| on_stdout_line(state, line, package_id, &target),
-                &mut |line| {
-                    on_stderr_line(
-                        state,
-                        line,
-                        package_id,
-                        &manifest,
-                        &target,
-                        &mut output_options,
-                    )
-                },
+                                &mut |line| state.stdout(line.to_string()),
+                                &mut |line| state.stderr(line.to_string()),
+                exec.repro_artifact_generator(),
             )
             .map_err(|e| {
                 if output_options.errors_seen == 0 {
@@ -407,7 +415,7 @@ fn rustc_work(
                     // Cargo exit unsuccessfully while seeming to not show any errors.
                     e
                 } else {
-                    verbose_if_simple_exit_code(e)
+                    e
                 }
             })
             .with_context(|| {

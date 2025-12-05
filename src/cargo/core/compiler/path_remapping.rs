@@ -8,7 +8,7 @@
 use std::ffi::{OsStr, OsString};
 use std::path::{Path, PathBuf};
 
-use anyhow::CargoResult;
+use crate::CargoResult;
 
 use crate::core::compiler::build_context::BuildContext;
 use crate::core::compiler::build_runner::BuildRunner;

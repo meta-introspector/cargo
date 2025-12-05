@@ -133,7 +133,6 @@ pub use self::job_state::JobState;
 use super::custom_build::Severity;
 use super::timings::{SectionTiming, Timings};
 use super::{BuildContext, BuildRunner, CompileMode, Unit};
-use crate::core::compiler::descriptive_pkg_name;
 use crate::core::compiler::future_incompat::{
     self, FutureBreakageItem, FutureIncompatReportPackage,
 };
@@ -1068,7 +1067,17 @@ impl<'gctx> DrainState<'gctx> {
         };
         runner.compilation.lint_warning_count += count.lints;
         let unit = &self.active[&id];
-        let mut message = descriptive_pkg_name(&unit.pkg.name(), &unit.target, &unit.mode);
+        let desc_name = unit.target.description_named();
+        let mode_str = if unit.mode.is_rustc_test() && !(unit.target.is_test() || unit.target.is_bench()) {
+            " test"
+        } else if unit.mode.is_doc_test() {
+            " doctest"
+        } else if unit.mode.is_doc() {
+            " doc"
+        } else {
+            ""
+        };
+        let mut message = format!("`{}` ({}{})", unit.pkg.name(), desc_name, mode_str);
         message.push_str(" generated ");
         match count.total {
             1 => message.push_str("1 warning"),

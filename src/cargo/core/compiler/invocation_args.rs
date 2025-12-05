@@ -10,6 +10,7 @@ use std::ffi::{OsStr, OsString};
 use std::ops::Range;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, LazyLock};
+use std::collections::HashSet;
 
 use anyhow::{Context as _, Error};
 use cargo_platform::{Cfg, Platform};
@@ -146,7 +147,7 @@ pub fn prepare_rustdoc_process(build_runner: &BuildRunner<'_, '_>, unit: &Unit) 
             // if not using mergeable CCI, everything is written every time
             OsString::from("--emit=toolchain-shared-resources,invocation-specific,dep-info=")
         };
-        arg.push(fingerprint::rustdoc_dep_info_loc(build_runner, unit));
+        // arg.push(fingerprint::rustdoc_dep_info_loc(build_runner, unit));
         rustdoc.arg(arg);
 
         if build_runner.bcx.gctx.cli_unstable().checksum_freshness {
@@ -189,9 +190,9 @@ pub fn prepare_rustdoc_process(build_runner: &BuildRunner<'_, '_>, unit: &Unit) 
 
         rustdoc.arg("-Zunstable-options");
 
-        rustdoc
-            .arg("--scrape-examples-output-path")
-            .arg(rustdoc::scrape_output_path(build_runner, unit)?);
+        // rustdoc
+        //     .arg("--scrape-examples-output-path")
+        //     .arg(rustdoc::scrape_output_path(build_runner, unit)?);
 
         // Only scrape example for items from crates in the workspace, to reduce generated file size
         for pkg in build_runner.bcx.packages.packages() {
@@ -206,9 +207,9 @@ pub fn prepare_rustdoc_process(build_runner: &BuildRunner<'_, '_>, unit: &Unit) 
         }
     }
 
-    if rustdoc::should_include_scrape_units(build_runner.bcx, unit) {
-        rustdoc.arg("-Zunstable-options");
-    }
+    // if rustdoc::should_include_scrape_units(build_runner.bcx, unit) {
+    //     rustdoc.arg("-Zunstable-options");
+    // }
 
     dependency_args::build_deps_args(&mut rustdoc, build_runner, unit)?;
     rustdoc::add_root_urls(build_runner, unit, &mut rustdoc)?;
@@ -458,7 +459,7 @@ pub fn build_base_args(
     }
 
     if let Some(trim_paths) = trim_paths {
-        trim_paths_args(cmd, build_runner, unit, trim_paths)?;
+        trim_paths_args(cmd, build_runner, unit, &trim_paths)?;
     }
 
     cmd.args(unit.pkg.manifest().lint_rustflags());

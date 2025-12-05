@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::{env, fs};
 
-use crate::core::compiler::{CompileKind, DefaultExecutor, Executor, UnitOutput};
+use crate::core::compiler::{CompileKind, DefaultExecutor, Executor, UnitOutput, DefaultReproArtifactGenerator};
 use crate::core::{Dependency, Edition, Package, PackageId, SourceId, Target, Workspace};
 use crate::ops::{CompileFilter, Packages};
 use crate::ops::{FilterRule, common_for_install_and_uninstall::*};
@@ -344,7 +344,8 @@ impl<'gctx> InstallablePackage<'gctx> {
 
         self.check_yanked_install()?;
 
-        let exec: Arc<dyn Executor> = Arc::new(DefaultExecutor);
+        let repro_artifact_generator = Arc::new(DefaultReproArtifactGenerator {});
+        let exec: Arc<dyn Executor> = Arc::new(DefaultExecutor::new(repro_artifact_generator));
         self.opts.build_config.dry_run = dry_run;
         let compile = ops::compile_ws(&self.ws, &self.opts, &exec).with_context(|| {
             if let Some(td) = td_opt.take() {

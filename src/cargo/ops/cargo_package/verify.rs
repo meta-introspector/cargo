@@ -22,6 +22,7 @@ use crate::core::Workspace;
 use crate::core::compiler::BuildConfig;
 use crate::core::compiler::DefaultExecutor;
 use crate::core::compiler::Executor;
+use crate::core::compiler::DefaultReproArtifactGenerator;
 use crate::core::compiler::build_config::UserIntent;
 use crate::ops;
 use crate::sources::PathSource;
@@ -91,7 +92,8 @@ pub fn run_verify(
         None
     };
 
-    let exec: Arc<dyn Executor> = Arc::new(DefaultExecutor);
+    let repro_artifact_generator = Arc::new(DefaultReproArtifactGenerator {});
+    let exec: Arc<dyn Executor> = Arc::new(DefaultExecutor::new(repro_artifact_generator));
     ops::compile_with_exec(
         &ws,
         &ops::CompileOptions {
