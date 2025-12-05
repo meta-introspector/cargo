@@ -138,7 +138,7 @@ use crate::core::compiler::future_incompat::{
     self, FutureBreakageItem, FutureIncompatReportPackage,
 };
 use crate::core::resolver::ResolveBehavior;
-use crate::core::{PackageId, Shell, TargetKind};
+use crate::core::{PackageId, Shell, TargetKind, Verbosity};
 use crate::util::CargoResult;
 use crate::util::context::WarningHandling;
 use crate::util::diagnostic_server::{self, DiagnosticPrinter};
@@ -982,6 +982,8 @@ impl<'gctx> DrainState<'gctx> {
         build_runner: &mut BuildRunner<'_, '_>,
         show_warnings: bool,
     ) -> CargoResult<()> {
+        // If --quiet is set, don't show any warnings from build scripts
+        let show_warnings = show_warnings && build_runner.bcx.gctx.shell().verbosity() != Verbosity::Quiet;
         let outputs = build_runner.build_script_outputs.lock().unwrap();
         let Some(metadata_vec) = build_runner.find_build_script_metadatas(unit) else {
             return Ok(());
@@ -1120,7 +1122,7 @@ impl<'gctx> DrainState<'gctx> {
             self.emit_log_messages(
                 unit,
                 build_runner,
-                unit.show_warnings(build_runner.bcx.gctx),
+                unit.show_warnings(build_runner.bcx.gctx) && build_runner.bcx.gctx.shell().verbosity() != Verbosity::Quiet,
             )?;
         }
         let unblocked = self.queue.finish(unit, &artifact);
