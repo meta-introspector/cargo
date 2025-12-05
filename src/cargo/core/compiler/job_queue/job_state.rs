@@ -83,6 +83,9 @@ impl<'a, 'gctx> JobState<'a, 'gctx> {
 
     pub fn stderr(&self, stderr: String) -> CargoResult<()> {
         if let Some(dedupe) = self.output {
+            if dedupe.gctx.shell().verbosity() == crate::core::Verbosity::Quiet {
+                return Ok(()); // Suppress output when quiet
+            }
             let mut shell = dedupe.gctx.shell();
             shell.print_ansi_stderr(stderr.as_bytes())?;
             shell.err().write_all(b"\n")?;

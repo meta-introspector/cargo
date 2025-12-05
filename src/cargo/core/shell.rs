@@ -405,6 +405,9 @@ impl Shell {
 
     /// Prints a message to stderr and translates ANSI escape code into console colors.
     pub fn print_ansi_stderr(&mut self, message: &[u8]) -> CargoResult<()> {
+        if self.verbosity == Verbosity::Quiet {
+            return Ok(());
+        }
         if self.needs_clear {
             self.err_erase_line();
         }

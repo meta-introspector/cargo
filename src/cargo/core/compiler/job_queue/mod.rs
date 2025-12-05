@@ -613,6 +613,9 @@ impl<'gctx> DrainState<'gctx> {
                 writeln!(build_runner.bcx.gctx.shell().out(), "{}", out)?;
             }
             Message::Stderr(err) => {
+                if build_runner.bcx.gctx.shell().verbosity() == Verbosity::Quiet {
+                    return Ok(()); // Suppress output when quiet
+                }
                 let mut shell = build_runner.bcx.gctx.shell();
                 shell.print_ansi_stderr(err.as_bytes())?;
                 shell.err().write_all(b"\n")?;

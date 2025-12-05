@@ -211,7 +211,7 @@ fn compile<'gctx>(
             } else {
                 // We always replay the output cache,
                 // since it might contain future-incompat-report messages
-                let show_diagnostics = unit.show_warnings(bcx.gctx)
+                let show_diagnostics = build_runner.bcx.gctx.shell().verbosity() != Verbosity::Quiet && unit.show_warnings(bcx.gctx)
                     && build_runner.bcx.gctx.warning_handling()? != WarningHandling::Allow;
                 let manifest = ManifestErrorContext::new(build_runner, unit);
                 let work = replay_output_cache(
@@ -1972,8 +1972,7 @@ impl OutputOptions {
         // Remove old cache, ignore ENOENT, which is the common case.
         drop(fs::remove_file(&path));
         let cache_cell = Some((path, OnceCell::new()));
-        let show_diagnostics =
-            build_runner.bcx.gctx.warning_handling().unwrap_or_default() != WarningHandling::Allow;
+        let show_diagnostics = build_runner.bcx.gctx.shell().verbosity() != Verbosity::Quiet && (build_runner.bcx.gctx.warning_handling().unwrap_or_default() != WarningHandling::Allow);
         OutputOptions {
             format: build_runner.bcx.build_config.message_format,
             cache_cell,
