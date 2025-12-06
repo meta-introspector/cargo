@@ -7,6 +7,7 @@ use crate::util::restricted_names::is_glob_pattern;
 use cargo::core::Verbosity;
 use cargo::core::Workspace;
 use cargo::ops::{self, CompileFilter, Packages};
+use cargo::util::command_prelude::UserIntent;
 use cargo::util::closest;
 use cargo_util::ProcessError;
 use itertools::Itertools as _;
@@ -187,7 +188,7 @@ pub fn exec_manifest_command(gctx: &mut GlobalContext, cmd: &str, args: &[OsStri
     }
 
     let mut compile_opts =
-        cargo::ops::CompileOptions::new(gctx, cargo::core::compiler::UserIntent::Build)?;
+        cargo::ops::CompileOptions::new(gctx, UserIntent::Build)?;
     compile_opts.spec = cargo::ops::Packages::Default;
 
     cargo::ops::run(&ws, &compile_opts, args).map_err(|err| to_run_error(gctx, err))

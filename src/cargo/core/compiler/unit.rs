@@ -1,5 +1,6 @@
 //! Types and impls for [`Unit`].
 
+use std::sync::Arc;
 use crate::core::Package;
 use crate::core::compiler::unit_dependencies::IsArtifact;
 use crate::core::compiler::{CompileKind, CompileMode, CompileTarget, CrateType};
@@ -12,7 +13,6 @@ use std::collections::{BTreeMap, HashSet};
 use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::ops::Deref;
-use std::rc::Rc;
 
 use super::BuildOutput;
 
@@ -20,7 +20,7 @@ use super::BuildOutput;
 ///
 /// A unit is an object that has enough information so that cargo knows how to build it.
 /// For example, if your package has dependencies, then every dependency will be built as a library
-/// unit. If your package is a library, then it will be built as a library unit as well, or if it
+/// unit. If your package is a library, then it will be built as a library as well, or if it
 /// is a binary with `main.rs`, then a binary will be output. There are also separate unit types
 /// for `test`ing and `check`ing, amongst others.
 ///
@@ -32,7 +32,7 @@ use super::BuildOutput;
 /// all that out.
 #[derive(Clone, PartialOrd, Ord)]
 pub struct Unit {
-    inner: Rc<UnitInner>,
+    inner: Arc<UnitInner>,
 }
 
 /// Internal fields of `Unit` which `Unit` will dereference to.
@@ -70,7 +70,7 @@ pub struct UnitInner {
     ///
     /// [`BuildContext::extra_args_for`]: crate::core::compiler::build_context::BuildContext::extra_args_for
     /// [`TargetInfo.rustflags`]: crate::core::compiler::build_context::TargetInfo::rustflags
-    pub rustflags: Rc<[String]>,
+    pub rustflags: Arc<[String]>,
     /// Extra compiler flags to pass to `rustdoc` for a given unit.
     ///
     /// Although it depends on the caller, in the current Cargo implementation,
@@ -81,13 +81,13 @@ pub struct UnitInner {
     ///
     /// [`BuildContext::extra_args_for`]: crate::core::compiler::build_context::BuildContext::extra_args_for
     /// [`TargetInfo.rustdocflags`]: crate::core::compiler::build_context::TargetInfo::rustdocflags
-    pub rustdocflags: Rc<[String]>,
+    pub rustdocflags: Arc<[String]>,
     /// Build script override for the given library name.
     ///
     /// Any package with a `links` value for the given library name will skip
     /// running its build script and instead use the given output from the
     /// config file.
-    pub links_overrides: Rc<BTreeMap<String, BuildOutput>>,
+    pub links_overrides: Arc<BTreeMap<String, BuildOutput>>,
     // if `true`, the dependency is an artifact dependency, requiring special handling when
     // calculating output directories, linkage and environment variables provided to builds.
     pub artifact: IsArtifact,
@@ -155,14 +155,14 @@ impl UnitInner {
 // Just hash the pointer for fast hashing
 impl Hash for Unit {
     fn hash<H: Hasher>(&self, hasher: &mut H) {
-        std::ptr::hash(&*self.inner, hasher)
+        Arc::as_ptr(&self.inner).hash(hasher)
     }
 }
 
 // Just equate the pointer since these are interned
 impl PartialEq for Unit {
     fn eq(&self, other: &Unit) -> bool {
-        std::ptr::eq(&*self.inner, &*other.inner)
+        Arc::ptr_eq(&self.inner, &other.inner)
     }
 }
 
@@ -211,7 +211,7 @@ pub struct UnitInterner {
 }
 
 struct InternerState {
-    cache: HashSet<Rc<UnitInner>>,
+    cache: HashSet<Arc<UnitInner>>,
 }
 
 impl UnitInterner {
@@ -235,9 +235,9 @@ impl UnitInterner {
         kind: CompileKind,
         mode: CompileMode,
         features: Vec<InternedString>,
-        rustflags: Rc<[String]>,
-        rustdocflags: Rc<[String]>,
-        links_overrides: Rc<BTreeMap<String, BuildOutput>>,
+        rustflags: Arc<[String]>,
+        rustdocflags: Arc<[String]>,
+        links_overrides: Arc<BTreeMap<String, BuildOutput>>,
         is_std: bool,
         dep_hash: u64,
         artifact: IsArtifact,
@@ -284,12 +284,12 @@ impl UnitInterner {
         Unit { inner }
     }
 
-    fn intern_inner(&self, item: &UnitInner) -> Rc<UnitInner> {
+    fn intern_inner(&self, item: &UnitInner) -> Arc<UnitInner> {
         let mut me = self.state.borrow_mut();
         if let Some(item) = me.cache.get(item) {
             return item.clone();
         }
-        let item = Rc::new(item.clone());
+        let item = Arc::new(item.clone());
         me.cache.insert(item.clone());
         item
     }
