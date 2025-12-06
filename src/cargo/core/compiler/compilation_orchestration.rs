@@ -6,58 +6,58 @@
 //! and execute compilation and documentation tasks. It also defines
 //! `OutputOptions` for handling compiler diagnostics.
 
-use std::borrow::Cow;
-use std::cell::OnceCell;
-use std::collections::{BTreeMap, HashMap, HashSet};
-use std::env;
-use std::ffi::{OsStr, OsString};
-use std::fmt::Display;
-use std::fs::{self, File};
-use std::io::{BufRead, BufWriter, Write};
-use std::ops::Range;
-use std::path::{Path, PathBuf};
-use std::sync::{Arc, LazyLock};
-use std::os::unix::ffi::OsStrExt;
-use chrono::Local;
 
-use annotate_snippets::{AnnotationKind, Group, Level, Renderer, Snippet};
-use anyhow::{Context as _, Error};
-use cargo_platform::{Cfg, Platform};
+
+use std::collections::{BTreeMap, HashMap, HashSet};
+
+
+use std::fmt::Display;
+use std::fs;
+use std::io::{BufRead, BufWriter, Write};
+
+use std::path::Path;
+use std::sync::Arc;
+
+
+
+
+use anyhow::Context as _;
+
 use itertools::Itertools;
-use regex::Regex;
-use tracing::{debug, instrument, trace};
+
+use tracing::instrument;
 
 use crate::core::compiler::artifact_linking::link_targets;
 use crate::core::compiler::dependency_args::{add_custom_flags, add_native_deps, add_plugin_deps};
-use crate::core::compiler::invocation_args::{prepare_rustc_process, prepare_rustdoc_process};
-use crate::core::compiler::build_context::BuildContext;
-use crate::core::compiler::build_config::{CompileMode, MessageFormat};
-use crate::core::compiler::build_runner::{BuildRunner, UnitHash};
-use crate::core::compiler::compilation::{Compilation, Doctest, UnitOutput};
-use crate::core::compiler::compile_kind::{CompileKind, CompileKindFallback, CompileTarget};
-use crate::core::compiler::crate_type::CrateType;
+use crate::core::compiler::invocation_args::prepare_rustc_process;
+
+use crate::core::compiler::build_config::CompileMode;
+use crate::core::compiler::build_runner::BuildRunner;
+
+use crate::core::compiler::compile_kind::CompileKind;
+
 use crate::core::compiler::custom_build;
 use crate::core::compiler::fingerprint;
-use crate::core::compiler::job_queue::{Job, JobQueue, JobState, Work};
+use crate::core::compiler::job_queue::{Job, JobQueue, Work};
 use crate::core::compiler::output_sbom;
-use crate::core::compiler::rustdoc;
+
 use crate::core::compiler::unit::Unit;
-use crate::core::compiler::unit_graph::UnitDep;
+
 use crate::core::compiler::GenerateReproArtifact;
 use crate::core::compiler::ManifestErrorContext;
 use crate::core::compiler::OutputOptions;
-use crate::core::manifest::TargetSourcePath;
-use crate::core::profiles::{PanicStrategy, Profile, StripInner};
-use crate::core::{Feature, PackageId, Target, Verbosity};
-use crate::util::OnceExt;
+
+
+use crate::core::PackageId;
+
 use crate::util::context::WarningHandling;
-use crate::util::errors::{CargoResult, VerboseError};
-use crate::util::interning::InternedString;
-use crate::util::machine_message::{self, Message};
-use crate::util::internal;
+use crate::util::errors::CargoResult;
+
+
+
 use cargo_util::paths;
-use cargo_util::{ProcessBuilder, ProcessError};
-use cargo_util_schemas::manifest::TomlDebugInfo; // Assuming this is needed.
+use cargo_util::ProcessBuilder;
+
 
 // No RUSTDOC_CRATE_VERSION_FLAG here, as it's moved to invocation_args.rs
 
@@ -78,12 +78,7 @@ pub trait Executor: Send + Sync + 'static {
         &self,
         cmd: &ProcessBuilder,
         id: PackageId,
-        compile_kind: CompileKind,
-        mode: CompileMode,
-        on_stdout_line: &mut dyn FnMut(&str) -> CargoResult<()>, 
-        on_stderr_line: &mut dyn FnMut(&str) -> CargoResult<()>,
-        repro_artifact_generator: &Arc<dyn GenerateReproArtifact>,
-    ) -> CargoResult<()>;
+                _mode: CompileMode,
 
     /// Queried when queuing each unit of work. If it returns true, then the
     /// unit will always be rebuilt, independent of whether it needs to be.
@@ -142,7 +137,7 @@ impl Executor for DefaultExecutor {
             )
             .map(drop);
 
-        if let Err(e) = &result {
+        if let Err(_e) = &result {
             if let Err(script_err) = repro_artifact_generator.generate_repro_artifact(
                 cmd,
                 id,
@@ -214,7 +209,7 @@ pub fn compile<'gctx>(
             } else {
                 // We always replay the output cache,
                 // since it might contain future-incompat-report messages
-                let show_diagnostics = unit.show_warnings(bcx.gctx)
+                let _show_diagnostics = unit.show_warnings(bcx.gctx)
                     && build_runner.bcx.gctx.warning_handling()? != WarningHandling::Allow;
                 let work = Work::new(|_| Ok(())); // Placeholder for replay_output_cache
                 work.then(link_targets(build_runner, unit, true)?)
@@ -271,7 +266,7 @@ fn rustc_work(
     // Prepare the native lib state (extra `-L` and `-l` flags).
     let build_script_outputs = Arc::clone(&build_runner.build_script_outputs);
     let current_id = unit.pkg.package_id();
-    let manifest = ManifestErrorContext::new(build_runner, unit);
+    let _manifest = ManifestErrorContext::new(build_runner, unit);
     let build_scripts = build_runner.build_scripts.get(unit).cloned();
 
     // If we are a binary and the package also contains a library, then we
@@ -284,8 +279,8 @@ fn rustc_work(
         } else {
             format!("{}.d", unit.target.crate_name())
         };
-    let rustc_dep_info_loc = root.join(dep_info_name);
-    let dep_info_loc = fingerprint::dep_info_loc(build_runner, unit);
+    let _rustc_dep_info_loc = root.join(dep_info_name);
+    let _dep_info_loc = fingerprint::dep_info_loc(build_runner, unit);
 
     let mut output_options = OutputOptions::new(build_runner, unit);
     let package_id = unit.pkg.package_id();
@@ -297,15 +292,15 @@ fn rustc_work(
     let unit = unit.clone();
 
     let root_output = build_runner.files().host_dest().map(|v| v.to_path_buf());
-    let build_dir = build_runner.bcx.ws.build_dir().into_path_unlocked();
-    let pkg_root = unit.pkg.root().to_path_buf();
-    let cwd = rustc
+    let _build_dir = build_runner.bcx.ws.build_dir().into_path_unlocked();
+    let _pkg_root = unit.pkg.root().to_path_buf();
+    let _cwd = rustc
         .get_cwd()
         .unwrap_or_else(|| build_runner.bcx.gctx.cwd())
         .to_path_buf();
     let fingerprint_dir = build_runner.files().fingerprint_dir(&unit);
     let script_metadatas = build_runner.find_build_script_metadatas(&unit);
-    let is_local = unit.is_local();
+    let _is_local = unit.is_local();
     let artifact = unit.artifact;
     let sbom_files = build_runner.sbom_output_files(&unit)?;
     let sbom = output_sbom::build_sbom(build_runner, &unit)?;
@@ -315,7 +310,7 @@ fn rustc_work(
             build_runner.bcx.gctx.shell().verbosity(),
             Verbosity::Verbose
         );
-    let failed_scrape_diagnostic = hide_diagnostics_for_scrape_unit.then(|| {
+    let _failed_scrape_diagnostic = hide_diagnostics_for_scrape_unit.then(|| {
         // If this unit is needed for doc-scraping, then we generate a diagnostic that
         // describes the set of reverse-dependencies that cause the unit to be needed.
         let target_desc = unit.target.description_named();
@@ -332,7 +327,7 @@ fn rustc_work(
     if hide_diagnostics_for_scrape_unit {
         output_options.show_diagnostics = false;
     }
-    let env_config = Arc::clone(build_runner.bcx.gctx.env_config()?);
+    let _env_config = Arc::clone(build_runner.bcx.gctx.env_config()?);
     return Ok(Work::new(move |state| {
         // Artifacts are in a different location than typical units,
         // hence we must assure the crate- and target-dependent
@@ -391,7 +386,7 @@ fn rustc_work(
         }
 
         state.running(&rustc);
-        let timestamp = paths::set_invocation_time(&fingerprint_dir)?;
+        let _timestamp = paths::set_invocation_time(&fingerprint_dir)?;
         for file in sbom_files {
             tracing::debug!("writing sbom to {}", file.display());
             let outfile = BufWriter::new(paths::create(&file)?);
