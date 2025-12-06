@@ -1,8 +1,7 @@
 // src/cargo/core/compiler/manifest_error_context.rs
 use crate::core::compiler::build_runner::BuildRunner;
 use crate::core::compiler::unit::Unit;
-use crate::core::PackageId;
-use anyhow::Result; // Assuming CargoResult is anyhow::Result
+ // Assuming CargoResult is anyhow::Result
 use std::collections::{HashMap, HashSet};
 
 pub struct ManifestErrorContext {

@@ -4,27 +4,23 @@
 //! declarations (`--extern`), and custom build script outputs (e.g., `cfg`
 //! flags and environment variables) to `rustc` and `rustdoc` invocations.
 
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::collections::BTreeMap;
 use std::env;
-use std::ffi::{OsStr, OsString};
+use std::ffi::OsString;
 use std::path::{Path, PathBuf};
-use std::sync::{Arc, LazyLock};
 
-use anyhow::{Context as _, Error};
 use itertools::Itertools;
-use tracing::{debug, instrument, trace};
+use tracing::debug;
 
 use crate::core::compiler::artifact;
-use crate::core::compiler::build_context::BuildContext;
 use crate::core::compiler::build_config::CompileMode;
 use crate::core::compiler::build_runner::BuildRunner;
 use crate::core::compiler::custom_build::{BuildScriptOutputs, BuildScripts, LibraryPath};
 use crate::core::compiler::unit::Unit;
-use crate::core::{Feature, PackageId, Target, Verbosity};
+use crate::core::{Feature, PackageId, Target};
 use crate::util::errors::CargoResult;
 use crate::util::interning::InternedString;
 use crate::core::compiler::unit_graph::UnitDep;
-use crate::core::compiler::build_context::FileFlavor;
 use crate::core::compiler::LinkArgTarget;
 use crate::core::compiler::UnitHash;
 use annotate_snippets::Level;

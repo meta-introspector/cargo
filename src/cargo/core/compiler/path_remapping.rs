@@ -5,15 +5,12 @@
 //! sensitive information (like local file paths) is obscured in generated
 //! debug information or diagnostics.
 
-use std::ffi::{OsStr, OsString};
-use std::path::{Path, PathBuf};
+use std::ffi::OsString;
 
 use crate::CargoResult;
 
-use crate::core::compiler::build_context::BuildContext;
 use crate::core::compiler::build_runner::BuildRunner;
 use crate::core::compiler::unit::Unit;
-use crate::util::GlobalContext;
 use cargo_util::ProcessBuilder;
 use cargo_util_schemas::manifest::TomlTrimPaths;
 use cargo_util_schemas::manifest::TomlTrimPathsValue;

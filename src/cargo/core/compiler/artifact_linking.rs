@@ -4,21 +4,16 @@
 //! artifacts from the `deps` directory to their final destination (e.g., `target/debug`),
 //! and also handles the generation of JSON machine messages for these artifacts.
 
-use std::ffi::{OsStr, OsString};
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
-use crate::CargoResult;
 
-use crate::core::compiler::build_context::FileFlavor;
 use crate::core::compiler::build_runner::BuildRunner;
-use crate::core::compiler::build_config::MessageFormat;
 use crate::core::compiler::unit::Unit;
 use crate::core::manifest::TargetSourcePath;
 use crate::util::errors::CargoResult as Result;
 use crate::util::machine_message::{self, Message};
 use crate::core::Target;
 use cargo_util::paths;
-use crate::core::profiles::StripInner;
 use crate::core::compiler::job_queue::Work;
 
 /// Link the compiled target (often of form `foo-{metadata_hash}`) to the

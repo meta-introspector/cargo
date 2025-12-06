@@ -620,7 +620,7 @@ where
         if allowed.contains(git2::CredentialType::USER_PASS_PLAINTEXT) {
             if let Some(username) = username_in_cb {
                 // Attempt to get userpass from git config
-                                if let Ok(mut cred) = git2::Cred::default() { // default will try config
+                                if let Ok(cred) = git2::Cred::default() { // default will try config
                                     if (cred.credtype() & git2::CredentialType::USER_PASS_PLAINTEXT.bits()) != 0 && cred.has_username() { // Changed
                                         return Ok(cred);
                                     }

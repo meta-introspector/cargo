@@ -1,7 +1,6 @@
-use std::collections::{BTreeMap, HashMap};
-use std::fmt;
+use std::collections::HashMap;
 use std::sync::Arc; // Changed from Rc
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use anyhow::Context as _;
 use cargo_util_schemas::manifest::RustVersion;

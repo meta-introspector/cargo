@@ -3,13 +3,9 @@
 use anyhow::Result;
 use cargo_util::ProcessBuilder;
 use crate::core::PackageId;
-use crate::core::Target;
 use crate::core::compiler::CompileKind;
-use crate::core::compiler::CompileTarget;
 use std::fs;
 use std::io::Write;
-use std::path::PathBuf;
-use std::ffi::OsString;
 use std::borrow::Cow;
 
 /// A trait for generating a reproduction artifact (e.g., a shell script, a Nix flake)
@@ -130,7 +126,7 @@ r#"{{
 }
 
 // Helper function to escape strings for shell.
-fn shell_escape(s: &str) -> Cow<str> {
+fn shell_escape(s: &str) -> Cow<'_, str> {
     if s.chars().all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-' || c == '/' || c == '.') {
         Cow::Borrowed(s)
     } else {

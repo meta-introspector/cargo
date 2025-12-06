@@ -5,42 +5,26 @@
 //! various flags related to compilation settings, error formatting,
 //! feature flags, lint caps, and LTO.
 
-use std::borrow::Cow;
 use std::ffi::{OsStr, OsString};
-use std::ops::Range;
-use std::path::{Path, PathBuf};
-use std::sync::{Arc, LazyLock};
 use std::collections::HashSet;
 
-use anyhow::{Context as _, Error};
-use cargo_platform::{Cfg, Platform};
 use itertools::Itertools;
-use tracing::{debug, instrument, trace};
 
 use crate::core::compiler::build_context::BuildContext;
-use crate::core::compiler::build_config::{CompileMode, MessageFormat, TimingOutput};
-use crate::core::compiler::build_runner::{BuildRunner, UnitHash};
-use crate::core::compiler::compilation::{Compilation, Doctest, UnitOutput};
-use crate::core::compiler::compile_kind::{CompileKind, CompileKindFallback, CompileTarget};
+use crate::core::compiler::build_config::MessageFormat;
+use crate::core::compiler::build_runner::BuildRunner;
+use crate::core::compiler::compile_kind::CompileKind;
 use crate::core::compiler::crate_type::CrateType;
 use crate::core::compiler::lto::Lto;
 use crate::core::compiler::path_remapping::{trim_paths_args, trim_paths_args_rustdoc};
-use crate::core::compiler::{fingerprint, rustdoc, output_sbom, dependency_args};
-use crate::core::compiler::timings::CompilationSection;
-use crate::core::compiler::unit::{Unit, UnitInterner};
-use crate::core::manifest::TargetSourcePath;
+use crate::core::compiler::{rustdoc, dependency_args};
+use crate::core::compiler::unit::Unit;
 use crate::core::profiles::{PanicStrategy, Profile, StripInner};
-use crate::core::{Feature, PackageId, Target, Verbosity};
-use crate::util::context::WarningHandling;
-use crate::util::errors::{CargoResult, VerboseError};
-use crate::util::interning::InternedString;
-use crate::util::lints::get_key_value;
-use crate::util::machine_message::{self, Message};
-use crate::util::{add_path_args, internal, path_args};
-use cargo_util::{ProcessBuilder, ProcessError, paths};
+use crate::core::Verbosity;
+use crate::util::errors::CargoResult;
+use crate::util::add_path_args;
+use cargo_util::ProcessBuilder;
 use cargo_util_schemas::manifest::TomlDebugInfo;
-use cargo_util_schemas::manifest::TomlTrimPaths;
-use cargo_util_schemas::manifest::TomlTrimPathsValue;
 
 const RUSTDOC_CRATE_VERSION_FLAG: &str = "--crate-version";
 
@@ -140,7 +124,7 @@ pub fn prepare_rustdoc_process(build_runner: &BuildRunner<'_, '_>, unit: &Unit) 
     if build_runner.bcx.gctx.cli_unstable().rustdoc_depinfo {
         // toolchain-shared-resources is required for keeping the shared styling resources
         // invocation-specific is required for keeping the original rustdoc emission
-        let mut arg = if build_runner.bcx.gctx.cli_unstable().rustdoc_mergeable_info {
+        let arg = if build_runner.bcx.gctx.cli_unstable().rustdoc_mergeable_info {
             // toolchain resources are written at the end, at the same time as merging
             OsString::from("--emit=invocation-specific,dep-info=")
         } else {
