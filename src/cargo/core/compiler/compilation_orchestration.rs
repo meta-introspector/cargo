@@ -12,6 +12,7 @@ use std::collections::{BTreeMap, HashMap, HashSet};
 
 
 use std::fmt::Display;
+use std::ffi::OsStr;
 use std::fs;
 use std::io::{BufRead, BufWriter, Write};
 
@@ -48,7 +49,7 @@ use crate::core::compiler::ManifestErrorContext;
 use crate::core::compiler::OutputOptions;
 
 
-use crate::core::PackageId;
+use crate::core::{PackageId, Target, Verbosity};
 
 use crate::util::context::WarningHandling;
 use crate::util::errors::CargoResult;
@@ -78,7 +79,12 @@ pub trait Executor: Send + Sync + 'static {
         &self,
         cmd: &ProcessBuilder,
         id: PackageId,
-                _mode: CompileMode,
+        compile_kind: CompileKind,
+        mode: CompileMode,
+        on_stdout_line: &mut dyn FnMut(&str) -> CargoResult<()>,
+        on_stderr_line: &mut dyn FnMut(&str) -> CargoResult<()>,
+        repro_artifact_generator: &Arc<dyn GenerateReproArtifact>,
+    ) -> CargoResult<()>;
 
     /// Queried when queuing each unit of work. If it returns true, then the
     /// unit will always be rebuilt, independent of whether it needs to be.
