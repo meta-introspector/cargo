@@ -162,7 +162,8 @@ pub trait CommandExt: Sized {
         supported_mode: &'static str,
     ) -> Self {
         let msg = format!(
-            "`--{{default_mode}}` is the default for `cargo {{command}}`; instead `--{{supported_mode}}` is supported"
+            "`--{}` is the default for `cargo {}`; instead `--{}` is supported",
+            default_mode, command, supported_mode
         );
         let value_parser = UnknownArgumentValueParser::suggest(msg);
         self._arg(
