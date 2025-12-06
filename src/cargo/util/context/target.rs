@@ -4,7 +4,8 @@ use crate::util::CargoResult;
 use serde::Deserialize;
 use std::collections::{BTreeMap, HashMap};
 use std::path::{Path, PathBuf};
-use std::rc::Rc;
+use std::sync::Arc;
+
 
 /// Config definition of a `[target.'cfg(…)']` table.
 ///
@@ -37,7 +38,7 @@ pub struct TargetConfig {
     /// Any package with a `links` value for the given library name will skip
     /// running its build script and instead use the given output from the
     /// config file.
-    pub links_overrides: Rc<BTreeMap<String, BuildOutput>>,
+    pub links_overrides: Arc<BTreeMap<String, BuildOutput>>,
 }
 
 /// Loads all of the `target.'cfg()'` tables.
@@ -136,7 +137,7 @@ fn load_config_table(gctx: &GlobalContext, prefix: &str) -> CargoResult<TargetCo
         rustflags,
         rustdocflags,
         linker,
-        links_overrides: Rc::new(links_overrides),
+        links_overrides: Arc::new(links_overrides),
     })
 }
 

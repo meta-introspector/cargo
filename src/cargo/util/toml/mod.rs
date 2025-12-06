@@ -4,7 +4,7 @@ use std::cell::OnceCell;
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
-use std::rc::Rc;
+use std::sync::Arc;
 use std::str::{self, FromStr};
 
 use crate::AlreadyPrintedError;
@@ -1814,10 +1814,10 @@ note: only a feature named `default` will be enabled by default"
     let default_run = normalized_package.default_run.clone();
     let metabuild = normalized_package.metabuild.clone().map(|sov| sov.0);
     let manifest = Manifest::new(
-        Rc::new(contents),
-        Rc::new(document),
-        Rc::new(original_toml),
-        Rc::new(normalized_toml),
+        Arc::new(contents),
+        Arc::new(document),
+        Arc::new(original_toml),
+        Arc::new(normalized_toml),
         summary,
         default_kind,
         forced_kind,
@@ -1996,10 +1996,10 @@ fn to_virtual_manifest(
         bail!("virtual manifests must be configured with [workspace]");
     }
     let manifest = VirtualManifest::new(
-        Rc::new(contents),
-        Rc::new(document),
-        Rc::new(original_toml),
-        Rc::new(normalized_toml),
+        Arc::new(contents),
+        Arc::new(document),
+        Arc::new(original_toml),
+        Arc::new(normalized_toml),
         replace,
         patch,
         workspace_config,

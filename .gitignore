@@ -12,3 +12,6 @@ __pycache__
 .vscode/
 *.iml
 *.swp
+.gitignore.ignore
+doit.sh
+doit.sh~

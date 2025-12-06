@@ -78,7 +78,7 @@ pub trait Executor: Send + Sync + 'static {
         &self,
         cmd: &ProcessBuilder,
         id: PackageId,
-        target: &Target,
+        compile_kind: CompileKind,
         mode: CompileMode,
         on_stdout_line: &mut dyn FnMut(&str) -> CargoResult<()>, 
         on_stderr_line: &mut dyn FnMut(&str) -> CargoResult<()>,
@@ -116,7 +116,7 @@ impl Executor for DefaultExecutor {
         &self,
         cmd: &ProcessBuilder,
         id: PackageId,
-        target: &Target,
+        compile_kind: CompileKind,
         mode: CompileMode,
         on_stdout_line: &mut dyn FnMut(&str) -> CargoResult<()>,
         on_stderr_line: &mut dyn FnMut(&str) -> CargoResult<()>,
@@ -146,7 +146,7 @@ impl Executor for DefaultExecutor {
             if let Err(script_err) = repro_artifact_generator.generate_repro_artifact(
                 cmd,
                 id,
-                target,
+                compile_kind,
                 &stdout_buffer,
                 &stderr_buffer,
             ) {
@@ -294,6 +294,7 @@ fn rustc_work(
 
     exec.init(build_runner, unit);
     let exec = exec.clone();
+    let unit = unit.clone();
 
     let root_output = build_runner.files().host_dest().map(|v| v.to_path_buf());
     let build_dir = build_runner.bcx.ws.build_dir().into_path_unlocked();
@@ -302,14 +303,14 @@ fn rustc_work(
         .get_cwd()
         .unwrap_or_else(|| build_runner.bcx.gctx.cwd())
         .to_path_buf();
-    let fingerprint_dir = build_runner.files().fingerprint_dir(unit);
-    let script_metadatas = build_runner.find_build_script_metadatas(unit);
+    let fingerprint_dir = build_runner.files().fingerprint_dir(&unit);
+    let script_metadatas = build_runner.find_build_script_metadatas(&unit);
     let is_local = unit.is_local();
     let artifact = unit.artifact;
-    let sbom_files = build_runner.sbom_output_files(unit)?;
-    let sbom = output_sbom::build_sbom(build_runner, unit)?;
+    let sbom_files = build_runner.sbom_output_files(&unit)?;
+    let sbom = output_sbom::build_sbom(build_runner, &unit)?;
 
-    let hide_diagnostics_for_scrape_unit = build_runner.bcx.unit_can_fail_for_docscraping(unit)
+    let hide_diagnostics_for_scrape_unit = build_runner.bcx.unit_can_fail_for_docscraping(&unit)
         && !matches!(
             build_runner.bcx.gctx.shell().verbosity(),
             Verbosity::Verbose
@@ -320,13 +321,13 @@ fn rustc_work(
         let target_desc = unit.target.description_named();
         let mut for_scrape_units = build_runner
             .bcx
-            .scrape_units_have_dep_on(unit)
+            .scrape_units_have_dep_on(&unit)
             .into_iter()
             .map(|unit| unit.target.description_named())
             .collect::<Vec<_>>();
         for_scrape_units.sort();
         let for_scrape_units = for_scrape_units.join(", ");
-        make_failed_scrape_diagnostic(build_runner, unit, format_args!("failed to check {target_desc} in package `{name}` as a prerequisite for scraping examples from: {for_scrape_units}"))
+        make_failed_scrape_diagnostic(build_runner, &unit, format_args!("failed to check {target_desc} in package `{name}` as a prerequisite for scraping examples from: {for_scrape_units}"))
     });
     if hide_diagnostics_for_scrape_unit {
         output_options.show_diagnostics = false;
@@ -399,14 +400,13 @@ fn rustc_work(
 
         let result = exec
             .exec(
-                &rustc,
-                package_id,
-                &target,
-                mode,
-                                &mut |line| state.stdout(line.to_string()),
-                                &mut |line| state.stderr(line.to_string()),
-                exec.repro_artifact_generator(),
-            )
+                                &rustc,
+                                package_id,
+                                unit.kind, // Pass CompileKind
+                                mode,
+                                                &mut |line| state.stdout(line.to_string()),
+                                                &mut |line| state.stderr(line.to_string()),
+                                exec.repro_artifact_generator(),            )
             .map_err(|e| {
                 if output_options.errors_seen == 0 {
                     // If we didn't expect an error, do not require --verbose to fail.
