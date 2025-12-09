@@ -1,17 +1,5 @@
-/target
-/Cargo.lock
-/config.stamp
-/Makefile
-/config.mk
-/src/doc/build
-/src/etc/*.pyc
-/src/registry/target
-rustc
-__pycache__
-.idea/
-.vscode/
-*.iml
-*.swp
-.gitignore.ignore
-doit.sh
-doit.sh~
+# Temporary error file
+#err.txt#
+
+# Nix reproduction flakes directory
+repro/
